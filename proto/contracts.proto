@@ -1,0 +1,16 @@
+
+syntax = "proto3";
+
+package auth;
+
+service AuthService {
+
+    rpc users_login() returns (is_log_in_succesful);
+
+    rpc users_register(user_mail, user_password) returns (is_sign_up_seccesful);
+
+    rpc send_verification_code(verification_code) returns (is_code_confirmed);
+
+
+}
+
