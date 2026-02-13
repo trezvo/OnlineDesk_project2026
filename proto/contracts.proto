@@ -5,15 +5,23 @@ package auth;
 
 service auth_service {
 
-    rpc users_login(login_request) returns (is_log_in_succesful);
+    rpc users_login(login_request) returns (is_login_succesful);
 
-    rpc users_register(user_mail, user_password) returns (is_sign_up_seccesful);
+    rpc users_register(user_mail, user_password) returns (is_register_succesful);
 
     rpc send_verification_code(verification_code) returns (is_code_confirmed);
 
 
 }
 
-massage login_request {
-    
+message login_request {
+    string name = 1;
+    string mail = 2;
+    string password = 3;
+}
+
+message login_response {
+    bool is_confirmed = 1;
+    int16 login_case_code = 2;
+    int32 unique_auth_id = 3;
 }
