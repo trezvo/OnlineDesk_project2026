@@ -12,6 +12,8 @@ pkg_check_modules(GRPC REQUIRED
     grpc++ 
     grpc    
 )
+
+
 find_program(GRPC_CPP_PLUGIN grpc_cpp_plugin REQUIRED)
 
 find_library(GRPC_REFLECTION_LIB 
@@ -19,7 +21,7 @@ find_library(GRPC_REFLECTION_LIB
     PATHS /usr/lib /usr/local/lib /usr/lib/x86_64-linux-gnu
 )
 
-set(PROTO_FILE ${CMAKE_CURRENT_SOURCE_DIR}/proto/contracts.proto)
+set(PROTO_FILE ${CMAKE_CURRENT_SOURCE_DIR}/proto/auth.proto)
 set(PROTO_BINARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/generated")
 
 file(MAKE_DIRECTORY ${PROTO_BINARY_DIR})

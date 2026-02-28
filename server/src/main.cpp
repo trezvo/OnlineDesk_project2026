@@ -1,11 +1,11 @@
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
-#include "EchoImpl.h"
 
-#include <csignal>
+#include "AuthenticationImpl.h"
+
 #include <memory>
-#include <iostream>
+#include <csignal>
 
 std::unique_ptr<grpc::Server> g_server;
 
@@ -18,7 +18,7 @@ void stopServer(int) {
 
 void runServer(const std::string& server_address) {
 
-    auto echo_service = std::make_shared<Echo::EchoServer>();
+    auto authentication_service = std::make_shared<auth_module::AuthenticationServiceImpl>();
 
     grpc::EnableDefaultHealthCheckService(true);
     grpc::reflection::InitProtoReflectionServerBuilderPlugin();
@@ -26,7 +26,7 @@ void runServer(const std::string& server_address) {
     grpc::ServerBuilder builder;
 
     builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
-    builder.RegisterService(echo_service.get());
+    builder.RegisterService(authentication_service.get());
 
     g_server = builder.BuildAndStart();
 
@@ -37,14 +37,12 @@ void runServer(const std::string& server_address) {
 
     g_server->Wait();
 
-
 }
 
 
 int main(int argc, char* argv[]) {
     std::signal(SIGINT, stopServer);
     std::signal(SIGTERM, stopServer);
-
 
     std::string my_address = "0.0.0.0:50051";
 

@@ -1,25 +1,56 @@
-#include "GrpcEcho.h"
-#include <memory>
+#include "auth.grpc.pb.h"
+#include "auth.pb.h"
+#include <grpcpp/grpcpp.h>
+
+#include <string>
 #include <iostream>
+#include <memory>
 
+int main() {
 
-int main(int argc, char* argv[]) {
+    std::shared_ptr<grpc::Channel> channel_ = grpc::CreateChannel("localhost:50051", grpc::InsecureChannelCredentials());
+    std::unique_ptr<online_desk::auth::AuthenticationService::Stub> auth_stub_ = 
+        online_desk::auth::AuthenticationService::NewStub(channel_);
 
-    auto me = std::make_shared<Echo::EchoClient>();
+    while (true) {
+        int x;
+        std::cin >> x;
+        if (x == 1) {
+            std::string n, p;
+            std::cout << "Name" << std::endl;
+            std::cin >> n;
+            std::cout << "Password" << std::endl;
+            std::cin >> p;
 
-    std::string s;
+            online_desk::auth::RegisterRequest request;
+            request.set_username(n);
+            request.set_password(p);
 
-    while (std::cin >> s) {
-        if (s == "-1") {
-            break;
+            online_desk::auth::RegisterResponse response;
+            grpc::ClientContext context;
+
+            auth_stub_->UserRegister(&context, request, &response);
+            std::cout << response.message();  
         }
+        else if (x == 2) {
+            std::string n, p;
+            std::cout << "Name" << std::endl;
+            std::cin >> n;
+            std::cout << "Password" << std::endl;
+            std::cin >> p;
 
-        auto response = me->send_message(s);
+            online_desk::auth::LoginRequest request;
+            request.set_username(n);
+            request.set_password(p);
 
-        if (response.sucsess_flag) {
-            std::cout << response.text << std::endl;
+            online_desk::auth::LoginResponse response;
+            grpc::ClientContext context;
+
+            auth_stub_->UserLogin(&context, request, &response);
+            std::cout << response.message();
         }
     }
 
-    return 1;
+
+    return 0;
 }

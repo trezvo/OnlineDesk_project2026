@@ -1,7 +1,5 @@
 set(CLIENT_SOURCES
     src/main.cpp
-    src/GrpcEcho.cpp
-    src/GrpcEcho.h
 )
 
 add_executable(desk_client ${CLIENT_SOURCES})
