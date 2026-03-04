@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package online_desk.auth;
+
+service AuthenticationService {
+    rpc UserRegister(RegisterRequest) returns (RegisterResponse);
+    rpc UserLogin(LoginRequest) returns (LoginResponse);
+}
+
+message RegisterRequest {
+    string username = 1;
+    string password = 2;
+}
+
+message RegisterResponse {
+    bool register_succeed = 1;
+    string message = 2;
+}
+
+message LoginRequest {
+    string username = 1;
+    string password = 2;
+}
+
+message LoginResponse {
+    bool login_succeed = 1;
+    string message = 2;
+    uint64 user_id = 3;
+    uint64 user_token = 4;
+}
