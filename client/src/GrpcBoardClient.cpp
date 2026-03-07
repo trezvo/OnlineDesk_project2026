@@ -1,4 +1,4 @@
-#include "GrpcBoardClient.h"
+#include "GrpcBoardClient.hpp"
 #include <iostream>
 
 GrpcBoardClient::GrpcBoardClient(const std::string& server_address) {

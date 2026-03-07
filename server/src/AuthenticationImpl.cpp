@@ -1,4 +1,4 @@
-#include "AuthenticationImpl.h"
+#include "AuthenticationImpl.hpp"
 #include <sodium.h>
 #include <uuid/uuid.h>
 #include <string>

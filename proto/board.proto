@@ -2,11 +2,15 @@ syntax = "proto3";
 
 package online_desk.board;
 
-service BoardService {
+
+service BoardHandlerService {
     rpc GetBoards(GetBoardsRequest) returns (GetBoardsResponse);
     rpc CreateBoard(CreateBoardRequest) returns (CreateBoardResponse);
     rpc DeleteBoard(DeleteBoardRequest) returns (DeleteBoardResponse);
-    rpc ViewBoard(ViewBoardRequest) returns (BoardSnap);
+    rpc ViewBoard(ViewBoardRequest) returns (stream BoardSnap);
+}
+
+service BoardSessionService {
     rpc ConnectToBoard(ConnectToBoardRequest) returns (stream BoardEvent);
     rpc UpdateBoard(UpdateBoardRequest) returns (UpdateBoardResponse);
 }
@@ -62,8 +66,7 @@ message ViewBoardRequest {
 }
 
 message BoardSnap {
-    string board_id = 1;
-    string board_version = 2;
+    uint32 board_id = 1;
 }
 
 message ConnectToBoardRequest {
@@ -71,27 +74,25 @@ message ConnectToBoardRequest {
     string board_id = 2;
 }
 
-message Heartbeat {
-  uint64 server_time_ms = 1;
+message UpdateContext {
+    uint32 widget_id = 1;
+    any content = 2;
 }
 
 message BoardEvent {
-    string board_id = 1;
-    string board_version = 2;
-    string user_id = 3;
+    uint32 board_id = 1;
     oneof payload {
-        Heartbeat hearbeat = 10;
+        UpdateContext context = 2;
     }
 }
 
 message UpdateBoardRequest {
-    string user_token = 1;
-    string board_id = 2;
+    uint64 user_token = 1;
+    uint64 board_id = 2;
+    any content;
 }
 
 message UpdateBoardResponse {
     bool success = 1;
     string message = 2;
-    uint64 new_board_version = 3;
-    uint64 time_ms = 4;
 }

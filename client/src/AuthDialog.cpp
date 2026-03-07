@@ -1,5 +1,5 @@
-#include "AuthDialog.h"
-#include "GrpcBoardClient.h"
+#include "AuthDialog.hpp"
+#include "GrpcBoardClient.hpp"
 #include <QVBoxLayout>
 #include <QFormLayout>
 #include <QHBoxLayout>
