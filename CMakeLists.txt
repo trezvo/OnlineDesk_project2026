@@ -9,9 +9,9 @@ find_package(Protobuf REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GRPC REQUIRED 
     grpc++ 
-    grpc
+    grpc    
+    protobuf
 )
-
 
 
 find_program(GRPC_CPP_PLUGIN grpc_cpp_plugin REQUIRED)

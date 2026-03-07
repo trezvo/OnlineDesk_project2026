@@ -25,6 +25,6 @@ message LoginRequest {
 message LoginResponse {
     bool login_succeed = 1;
     string message = 2;
-    string user_id = 3;
+    uint64 user_id = 3;
     uint64 user_token = 4;
 }

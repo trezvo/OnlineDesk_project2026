@@ -8,7 +8,7 @@
 struct LoginResult {
     bool success;
     std::string message;
-    std::string user_id = 0;
+    uint64_t user_id = 0;
     uint64_t user_token = 0;
 };
 
@@ -26,7 +26,5 @@ public:
     (const std::string& username, const std::string& password);
 
 private:
-    uint64_t login_token_;
-
     std::unique_ptr<online_desk::auth::AuthenticationService::Stub> auth_stub_;
 };
