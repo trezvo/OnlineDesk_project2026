@@ -7,4 +7,6 @@
 ./script-build.sh
 ./script-server-start.sh # 1-ый терминал
 
-./script-cliend-start/sh # 2-ой терминал```
+./script-cliend-start/sh # 2-ой терминал
+```
+
