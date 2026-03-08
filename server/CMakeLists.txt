@@ -1,7 +1,13 @@
+
+file(GLOB HEADERS "src/*.hpp")
+list(FILTER HEADERS EXCLUDE REGEX ".*_dev\\.hpp$")
+
+file(GLOB SOURCES "src/*.cpp")
+list(FILTER SOURCES EXCLUDE REGEX ".*_dev\\.cpp$")
+
 set(SERVER_SOURCES
-    src/main.cpp
-    src/AuthenticationImpl.cpp
-    src/AuthenticationImpl.h
+    ${HEADERS}
+    ${SOURCES}
 )
 
 find_package(PkgConfig REQUIRED)

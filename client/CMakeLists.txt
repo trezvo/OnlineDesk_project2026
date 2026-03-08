@@ -1,8 +1,13 @@
+
+file(GLOB HEADERS "src/*.hpp")
+list(FILTER HEADERS EXCLUDE REGEX ".*_dev\\.hpp$")
+
+file(GLOB SOURCES "src/*.cpp")
+list(FILTER SOURCES EXCLUDE REGEX ".*_dev\\.cpp$")
+
 set(CLIENT_SOURCES
-    src/main.cpp
-    src/AuthDialog.cpp
-    src/GrpcBoardClient.cpp 
-    src/RegisterDialog.cpp
+    ${HEADERS}
+    ${SOURCES}
 )
 
 add_executable(desk_client ${CLIENT_SOURCES})

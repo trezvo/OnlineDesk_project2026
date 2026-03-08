@@ -143,6 +143,7 @@ grpc::Status AuthenticationServiceImpl::UserLogin(
             else {
                 new_login_token = ((uint64_t)randombytes_random() << 32) | randombytes_random();
             }
+            response->set_user_token(new_login_token);
 
             {
                 std::lock_guard tmp_lock(token_mutex_);

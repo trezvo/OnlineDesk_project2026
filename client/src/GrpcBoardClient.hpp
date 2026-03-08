@@ -5,28 +5,33 @@
 #include <grpcpp/grpcpp.h>
 #include "auth.grpc.pb.h"
 
-struct LoginResult {
-    bool success;
-    std::string message;
-    std::string user_id = 0;
+struct LoginMetaData {
+    bool success = false;
+    std::string message = "";
+    std::string user_id = "";
     uint64_t user_token = 0;
 };
 
 struct RegisterResult {
-    bool success;
-    std::string message;
+    bool success = false;
+    std::string message = "";
 };
 
 class GrpcBoardClient {
 public:
-    GrpcBoardClient(const std::string& server_address);
+
+    explicit GrpcBoardClient(const std::string& server_address);
     
-    LoginResult login(const std::string& username, const std::string& password);
+    void login(const std::string& username, const std::string& password);
     RegisterResult registerUser
     (const std::string& username, const std::string& password);
+    const LoginMetaData& get_login_data() const {
+        return login_data_;
+    }
 
 private:
-    uint64_t login_token_;
+    
+    LoginMetaData login_data_;
 
     std::unique_ptr<online_desk::auth::AuthenticationService::Stub> auth_stub_;
 };

@@ -101,15 +101,17 @@ void AuthDialog::onLoginClicked() {
     login_button_->setEnabled(false);
     login_button_->setText("Вход...");
 
-    auto result = grpc_client_->login(username.toStdString(), password.toStdString());
+    grpc_client_->login(username.toStdString(), password.toStdString());
+
+    const auto& login_result = grpc_client_->get_login_data();
 
     login_button_->setEnabled(true);
     login_button_->setText("Войти");
 
-    if (result.success) {
+    if (login_result.success) {
         accept();
     } else {
-        error_label_->setText(QString::fromStdString(result.message));
+        error_label_->setText(QString::fromStdString(login_result.message));
         error_label_->show();
     }
 }
