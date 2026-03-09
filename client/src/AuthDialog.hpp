@@ -1,12 +1,12 @@
 #pragma once
 
+#include "GrpcBoardClient.hpp"
 #include <QDialog>
 #include <QLineEdit>
 #include <QPushButton>
 #include <QLabel>
 #include <memory>
 
-class GrpcBoardClient;
 
 class AuthDialog : public QDialog {
     Q_OBJECT

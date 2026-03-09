@@ -5,8 +5,6 @@
 #include <QHBoxLayout>
 #include <QMessageBox>
 
-#include <iostream>
-
 AuthDialog::AuthDialog(std::shared_ptr<GrpcBoardClient> client, QWidget* parent)
     : QDialog(parent)
     , grpc_client_(client) {
@@ -121,8 +119,4 @@ void AuthDialog::onLoginClicked() {
 void AuthDialog::onRegisterClicked() {
 
     emit registerRequested();
-    // Здесь тоже происходят какие-то странные вещи
-    // 1) почему-то блокируется auth_dialog_
-    // 2) я не понимаю, зачем здесь этот close(), его быть не должно...
-    close();
 }

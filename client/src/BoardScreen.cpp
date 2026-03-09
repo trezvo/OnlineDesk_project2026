@@ -1,18 +1,15 @@
-#include "GrpcBoardClient.hpp"
-#include "AppController.hpp"
-#include "MainScreen.hpp"
+#include "GrpcBoardClient"
+#include "BoardScreen.hpp"
 #include <memory>
 
-
-MainScreen::MainScreen(std::shared_ptr<GrpcBoardClient> grpc_client, std::shared_ptr<AppController> app, QWidget* parent) 
-    : QMainWindow(parent) 
-    , grpc_client_(grpc_client)
-    , app_(app) {
+BoardScreen::BoardScreen(std::shared_ptr<GrpcBoardClient> grpc_client, QObject* parent)
+    : QObject(parent)
+    , grpc_client_(grpc_client) {
     SetupUI();
 }
 
-void MainScreen::SetupUI() {
-    //deepseeked ex
+BoardScreen::SetupUi() {
+     //deepseeked ex
 
     setWindowTitle("Главное окно");
     resize(800, 600);
