@@ -10,8 +10,8 @@
 class AppController {
 
     const std::shared_ptr<GrpcBoardClient> grpc_client_;
-    std::unique_ptr<AuthDialog> auth_dialog_ = nullptr;
-    std::unique_ptr<QMainWindow> main_window_ = nullptr;
+    AuthDialog* auth_dialog_ = nullptr;
+    QMainWindow* main_window_ = nullptr;
     
 public:
 

@@ -5,6 +5,8 @@
 #include <QHBoxLayout>
 #include <QMessageBox>
 
+#include <iostream>
+
 AuthDialog::AuthDialog(std::shared_ptr<GrpcBoardClient> client, QWidget* parent)
     : QDialog(parent)
     , grpc_client_(client) {
@@ -14,7 +16,7 @@ AuthDialog::AuthDialog(std::shared_ptr<GrpcBoardClient> client, QWidget* parent)
 void AuthDialog::setupUI() {
     setWindowTitle("Online Desk");
     setModal(true);
-    setFixedSize(400, 250);
+    setFixedSize(400, 275);
 
     auto* layout = new QVBoxLayout(this);
     layout->setSpacing(15);
@@ -117,6 +119,10 @@ void AuthDialog::onLoginClicked() {
 }
 
 void AuthDialog::onRegisterClicked() {
-    emit registerRequested();  
-    close();                   
+
+    emit registerRequested();
+    // Здесь тоже происходят какие-то странные вещи
+    // 1) почему-то блокируется auth_dialog_
+    // 2) я не понимаю, зачем здесь этот close(), его быть не должно...
+    close();
 }

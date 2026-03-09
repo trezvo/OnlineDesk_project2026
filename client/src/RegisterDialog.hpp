@@ -1,18 +1,17 @@
 #pragma once
 
+#include "GrpcBoardClient.hpp"
 #include <QDialog>
 #include <QLineEdit>
 #include <QPushButton>
 #include <QLabel>
 #include <memory>
 
-class GrpcBoardClient;
-
 class RegisterDialog : public QDialog {
     Q_OBJECT
 
 public:
-    explicit RegisterDialog(std::shared_ptr<GrpcBoardClient> client, QWidget* parent = nullptr);
+    explicit RegisterDialog(std::shared_ptr<GrpcBoardClient> grpc_client, QWidget* parent = nullptr);
 
 private slots:
     void onRegisterClicked();
