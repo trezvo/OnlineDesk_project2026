@@ -1,16 +1,25 @@
+
+file(GLOB HEADERS "src/*.hpp")
+list(FILTER HEADERS EXCLUDE REGEX ".*_dev\\.hpp$")
+
+file(GLOB SOURCES "src/*.cpp")
+list(FILTER SOURCES EXCLUDE REGEX ".*_dev\\.cpp$")
+
 set(SERVER_SOURCES
-    src/main.cpp
-    src/AuthenticationImpl.cpp
-    src/AuthenticationImpl.h
+    ${HEADERS}
+    ${SOURCES}
 )
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(Sodium REQUIRED libsodium)
 
+pkg_check_modules(UUID REQUIRED uuid)
+
 add_executable(desk_server ${SERVER_SOURCES})
 
 target_link_libraries(desk_server PRIVATE
     ${Sodium_LIBRARIES}
+    ${UUID_LIBRARIES}
     ${GRPC_LIBRARIES}
     ${Protobuf_LIBRARIES}
     proto_generated
@@ -18,6 +27,7 @@ target_link_libraries(desk_server PRIVATE
 
 target_include_directories(desk_server PRIVATE
     ${Sodium_INCLUDE_DIRS}
+    ${UUID_INCLUDE_DIRS}
     ${GRPC_INCLUDE_DIRS}
     ${Protobuf_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/src

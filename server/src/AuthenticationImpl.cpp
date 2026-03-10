@@ -1,8 +1,11 @@
-#include "AuthenticationImpl.h"
+#include "AuthenticationImpl.hpp"
 #include <sodium.h>
+#include <uuid/uuid.h>
 #include <string>
 #include <map>
 #include <exception>
+#include <mutex>
+#include <random>
 
 namespace auth_module {
 
@@ -16,7 +19,7 @@ UsersDataBase::UserInfo UsersDataBase::GetUserData(const std::string& name) {
 }
 
 void UsersDataBase::SetUserData(
-    uint64_t id, 
+    const std::string& id, 
     const std::string& username, 
     const std::string& password
 ) {
@@ -27,10 +30,22 @@ void UsersDataBase::SetUserData(
     users_data_base_[username] = {id, username, password};
 }
 
-std::string AuthenticationServiceImpl::HashPassword(const std::string& password) {
-    static int sodium_init_code = sodium_init();
 
-    if (sodium_init_code < 0) {
+std::string AuthenticationServiceImpl::GenerateUUID() {
+    uuid_t uuid;
+    uuid_generate(uuid);
+
+    char uuid_buffer[37];
+    uuid_unparse(uuid, uuid_buffer);
+
+    return std::string(uuid_buffer);
+}
+
+
+std::string AuthenticationServiceImpl::HashPassword(const std::string& password) {
+    static const int sodium_init_code_ = sodium_init();
+
+    if (sodium_init_code_ < 0) {
         return password;
     }
 
@@ -58,7 +73,6 @@ bool AuthenticationServiceImpl::VerifyPassword(const std::string& password, cons
 }
 
 AuthenticationServiceImpl::AuthenticationServiceImpl() {
-    users_counter_ = 1;
     users_data_base_ = std::make_shared<UsersDataBase>();
 }
 
@@ -80,7 +94,7 @@ grpc::Status AuthenticationServiceImpl::UserRegister(
     }
 
     try {
-        users_data_base_->SetUserData(users_counter_++, username, HashPassword(password));
+        users_data_base_->SetUserData(GenerateUUID(), username, HashPassword(password));
     }
     catch (std::exception& e) {
         response->set_register_succeed(false);
@@ -94,12 +108,14 @@ grpc::Status AuthenticationServiceImpl::UserRegister(
     return grpc::Status::OK;
 }
 
+
 grpc::Status AuthenticationServiceImpl::UserLogin(
     grpc::ServerContext* context,
     const contract::LoginRequest* request,
     contract::LoginResponse* response
 ) {
-
+    static const int sodium_init_code_ = sodium_init();
+    
     const std::string& username = request->username();
     const std::string& password = request->password();
 
@@ -116,7 +132,23 @@ grpc::Status AuthenticationServiceImpl::UserLogin(
             response->set_login_succeed(true);
             response->set_message("Добро пожаловать!");
             response->set_user_id(user_info.id);
-            response->set_user_token(user_info.id);
+            
+            uint64_t new_login_token = 0;
+
+            if (sodium_init_code_ < 0) {
+                std::mt19937_64 gen;
+                new_login_token = gen();
+            }
+            else {
+                new_login_token = ((uint64_t)randombytes_random() << 32) | randombytes_random();
+            }
+            response->set_user_token(new_login_token);
+
+            {
+                std::lock_guard tmp_lock(token_mutex_);
+                online_tokens_[user_info.id] = new_login_token;
+            }
+
         }
         else {
             response->set_login_succeed(false);

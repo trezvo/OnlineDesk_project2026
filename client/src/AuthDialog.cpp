@@ -1,5 +1,5 @@
-#include "AuthDialog.h"
-#include "GrpcBoardClient.h"
+#include "AuthDialog.hpp"
+#include "GrpcBoardClient.hpp"
 #include <QVBoxLayout>
 #include <QFormLayout>
 #include <QHBoxLayout>
@@ -14,7 +14,7 @@ AuthDialog::AuthDialog(std::shared_ptr<GrpcBoardClient> client, QWidget* parent)
 void AuthDialog::setupUI() {
     setWindowTitle("Online Desk");
     setModal(true);
-    setFixedSize(400, 250);
+    setFixedSize(400, 275);
 
     auto* layout = new QVBoxLayout(this);
     layout->setSpacing(15);
@@ -101,20 +101,23 @@ void AuthDialog::onLoginClicked() {
     login_button_->setEnabled(false);
     login_button_->setText("Вход...");
 
-    auto result = grpc_client_->login(username.toStdString(), password.toStdString());
+    grpc_client_->login(username.toStdString(), password.toStdString());
+
+    const auto& login_result = grpc_client_->get_login_data();
 
     login_button_->setEnabled(true);
     login_button_->setText("Войти");
 
-    if (result.success) {
+    if (login_result.success) {
         accept();
+        emit loginConfirmed();
     } else {
-        error_label_->setText(QString::fromStdString(result.message));
+        error_label_->setText(QString::fromStdString(login_result.message));
         error_label_->show();
     }
 }
 
 void AuthDialog::onRegisterClicked() {
-    emit registerRequested();  
-    close();                   
+
+    emit registerRequested();
 }

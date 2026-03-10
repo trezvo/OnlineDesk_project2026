@@ -1,20 +1,20 @@
-#include "RegisterDialog.h"
-#include "GrpcBoardClient.h"
+#include "RegisterDialog.hpp"
+#include "GrpcBoardClient.hpp"
 #include <QVBoxLayout>
 #include <QFormLayout>
 #include <QHBoxLayout>
 #include <QMessageBox>
 
-RegisterDialog::RegisterDialog(std::shared_ptr<GrpcBoardClient> client, QWidget* parent)
+RegisterDialog::RegisterDialog(std::shared_ptr<GrpcBoardClient> grpc_client, QWidget* parent)
     : QDialog(parent)
-    , grpc_client_(client) {
+    , grpc_client_(grpc_client) {
     setupUI();
 }
 
 void RegisterDialog::setupUI() {
     setWindowTitle("Регистрация");
     setModal(true);
-    setFixedSize(400, 300);
+    setFixedSize(400, 275);
 
     auto* layout = new QVBoxLayout(this);
     layout->setSpacing(15);
