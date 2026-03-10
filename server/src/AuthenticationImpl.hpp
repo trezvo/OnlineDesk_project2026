@@ -28,7 +28,7 @@ public:
 
     UserInfo GetUserData(const std::string& name);
     void SetUserData(const std::string& id, const std::string& username, const std::string& password);
-    bool contains(const std::string& name) {
+    inline bool contains(const std::string& name) const {
         return users_data_base_.contains(name);
     }
 
@@ -41,7 +41,6 @@ private:
 
 class AuthenticationServiceImpl final : public contract::AuthenticationService::Service {
 
-    uint64_t users_counter_;
     std::shared_ptr<UsersDataBase> users_data_base_;    
 
     static std::string GenerateUUID();

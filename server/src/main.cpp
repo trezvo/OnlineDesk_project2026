@@ -3,6 +3,7 @@
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
 
 #include "AuthenticationImpl.hpp"
+#include "BoardImpl.hpp"
 
 #include <memory>
 #include <csignal>
@@ -19,6 +20,7 @@ void stopServer(int) {
 void runServer(const std::string& server_address) {
 
     auto authentication_service = std::make_shared<auth_module::AuthenticationServiceImpl>();
+    auto board_service = std::make_shared<board_module::BoardServiceImpl>(authentication_service);
 
     grpc::EnableDefaultHealthCheckService(true);
     grpc::reflection::InitProtoReflectionServerBuilderPlugin();
@@ -27,6 +29,7 @@ void runServer(const std::string& server_address) {
 
     builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
     builder.RegisterService(authentication_service.get());
+    builder.RegisterService(board_service.get());
 
     g_server = builder.BuildAndStart();
 

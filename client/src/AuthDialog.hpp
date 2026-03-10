@@ -16,6 +16,7 @@ public:
 
 signals:
     void registerRequested();
+    void loginConfirmed();
 
 private slots:
     void onLoginClicked();

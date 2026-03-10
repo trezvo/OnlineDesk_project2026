@@ -1,7 +1,7 @@
 #pragma once
 #include "GrpcBoardClient.hpp"
-#include "AppController.hpp"
-#include "BoardsListWidget.hpp"
+#include "AppControllerFwd.hpp"
+#include "BoardsButtonList.hpp"
 #include <QMainWindow>
 #include <QHBoxLayout>
 #include <memory> 
@@ -15,12 +15,13 @@ class MainScreen : public QMainWindow {
 
     std::shared_ptr<GrpcBoardClient> grpc_client_;
     std::shared_ptr<AppController> app_;
-    std::unique_ptr<BoardsListWidget> boards_list_;
-    std::unique_ptr<QHBoxLayout> layout_;
+    BoardsButtonList* boards_list_;
+    QHBoxLayout* layout_;
 
-public slots:
-    void onBoardCreateClicked();
-    void onBoardJoinClicked();
+// public slots:
+//     void onBoardCreateClicked();
+//     void onBoardJoinClicked();
+//TODO
 
 public:
 

@@ -1,5 +1,5 @@
 #include "BoardWidgets.hpp"
-#include <mamory>
+#include <memory>
 
 namespace widgets {
 

@@ -2,51 +2,43 @@ syntax = "proto3";
 
 package online_desk.board;
 
-
-service BoardHandlerService {
-    rpc GetBoards(GetBoardsRequest) returns (stream GetBoardsResponse);
+service BoardService {
+    rpc FetchUserBoards(FetchUserBoardsRequest) returns (FetchUserBoardsResponse);
     rpc CreateBoard(CreateBoardRequest) returns (CreateBoardResponse);
     rpc DeleteBoard(DeleteBoardRequest) returns (DeleteBoardResponse);
+    rpc SubscribeBoard(stream SubscribeStreamChunck) returns (stream SubscribeStreamChunck);
 }
 
-service BoardSessionService {
-    rpc ConnectToBoard(ConnectToBoardRequest) returns (stream BoardEvent);
-    rpc UpdateBoard(UpdateBoardRequest) returns (UpdateBoardResponse);
-}
-
-message User {
+message FetchUserBoardsRequest {
     string user_id = 1;
-    string username = 2;
-    string user_token = 3;
+    uint64 user_token = 2;
 }
 
 message BoardInfo {
-    string board_id = 1;
+    uint64 board_id = 1;
     string board_name = 2;
 }
 
-message GetBoardsRequest {
-    string user_token = 1;
-}
-
-message GetBoardsResponse {
-    repeated BoardInfo boards = 1;
+message FetchUserBoardsResponse {
+    bool success = 1;
+    string message = 2;
+    repeated BoardInfo boards = 3;
 }
 
 message CreateBoardRequest {
-    string user_token = 1;
+    uint64 user_token = 1;
     string board_name = 2;
 }
 
 message CreateBoardResponse {
     bool success = 1;
     string message = 2;
-    BoardInfo board = 3;
+    uint64 board_id = 3;
 }
 
 message DeleteBoardRequest {
-    string user_token = 1;
-    string board_id = 2;
+    uint64 user_token = 1;
+    uint64 board_id = 2;
 }
 
 message DeleteBoardResponse {
@@ -54,39 +46,22 @@ message DeleteBoardResponse {
     string message = 2;
 }
 
-message ViewBoardRequest {
-    string user_token = 1;
-    string board_id = 2;
+message WidgetInfo {
+    int32 coord_x = 1;
+    int32 coord_y = 2;
+    string content_ = 3;
 }
 
-message BoardSnap {
-    uint32 board_id = 1;
+
+enum WidgetEditType {
+    CREATE = 0;
+    UPDATE = 1;
+    DELETE = 2;
 }
 
-message ConnectToBoardRequest {
-    string user_token = 1;
-    string board_id = 2;
+message SubscribeStreamChunck {
+    WidgetEditType edit_type = 1;
+    string widget_id = 2;
+    WidgetInfo update_data = 3;
 }
 
-message UpdateContext {
-    uint32 widget_id = 1;
-    any content = 2;
-}
-
-message BoardEvent {
-    uint32 board_id = 1;
-    oneof payload {
-        UpdateContext context = 2;
-    }
-}
-
-message UpdateBoardRequest {
-    uint64 user_token = 1;
-    uint64 board_id = 2;
-    any content;
-}
-
-message UpdateBoardResponse {
-    bool success = 1;
-    string message = 2;
-}

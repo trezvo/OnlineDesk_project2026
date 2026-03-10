@@ -1,7 +1,7 @@
 #pragma once
 
-#include "GrpcBoardClient"
-#include "BoardsListWidget.hpp"
+#include "GrpcBoardClient.hpp"
+#include "BoardsButtonList.hpp"
 #include <QMainWindow>
 #include <memory>
 
@@ -14,6 +14,6 @@ class BoardScreen : public QMainWindow {
 
 public:
 
-    explicit BoardScreen(std::shared_ptr<GrpcBoardClient> grpc_client, QObject* parent = nullptr);
-    ~BoardScreen() {}
-}
+    explicit BoardScreen(std::shared_ptr<GrpcBoardClient> grpc_client, QWidget* parent = nullptr);
+    ~BoardScreen() = default;
+};

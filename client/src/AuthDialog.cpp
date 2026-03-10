@@ -110,6 +110,7 @@ void AuthDialog::onLoginClicked() {
 
     if (login_result.success) {
         accept();
+        emit loginConfirmed();
     } else {
         error_label_->setText(QString::fromStdString(login_result.message));
         error_label_->show();

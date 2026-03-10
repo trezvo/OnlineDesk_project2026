@@ -73,7 +73,6 @@ bool AuthenticationServiceImpl::VerifyPassword(const std::string& password, cons
 }
 
 AuthenticationServiceImpl::AuthenticationServiceImpl() {
-    users_counter_ = 1;
     users_data_base_ = std::make_shared<UsersDataBase>();
 }
 

@@ -1,17 +1,17 @@
-#include "GrpcBoardClient"
+#include "GrpcBoardClient.hpp"
 #include "BoardScreen.hpp"
 #include <memory>
 
-BoardScreen::BoardScreen(std::shared_ptr<GrpcBoardClient> grpc_client, QObject* parent)
-    : QObject(parent)
+BoardScreen::BoardScreen(std::shared_ptr<GrpcBoardClient> grpc_client, QWidget* parent)
+    : QMainWindow(parent)
     , grpc_client_(grpc_client) {
     SetupUI();
 }
 
-BoardScreen::SetupUi() {
+void BoardScreen::SetupUI() {
      //deepseeked ex
 
-    setWindowTitle("Главное окно");
+    setWindowTitle("Окно сессии");
     resize(800, 600);
     
     // Устанавливаем центральный виджет (обязательно для QMainWindow!)
