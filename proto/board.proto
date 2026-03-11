@@ -26,8 +26,9 @@ message FetchUserBoardsResponse {
 }
 
 message CreateBoardRequest {
-    uint64 user_token = 1;
-    string board_name = 2;
+    string user_id = 1;
+    uint64 user_token = 2;
+    string board_name = 3;
 }
 
 message CreateBoardResponse {
