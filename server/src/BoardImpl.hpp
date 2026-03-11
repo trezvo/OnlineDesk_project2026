@@ -24,7 +24,7 @@ class BoardsDataBase {
 
 public:
 
-    void SetBoard(uint64_t borad_id, std::string board_name);
+    void SetBoard(uint64_t board_id, std::string board_name);
     std::optional<std::string> GetBoard(uint64_t board_id) const;
 
 private:
@@ -38,6 +38,7 @@ class BoardServiceImpl final : public contracts::BoardService::Service {
     std::shared_ptr<auth_module::AuthenticationServiceImpl> auth_impl_;
     BoardsDataBase data_base_;
     std::unordered_map<std::string, std::vector<uint64_t>> user_owned_boards_;
+    uint64_t board_counter_ = 1;
 
 public:
 
