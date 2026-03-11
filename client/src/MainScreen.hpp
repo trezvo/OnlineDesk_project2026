@@ -27,4 +27,9 @@ public:
 
     explicit MainScreen(std::shared_ptr<GrpcBoardClient> grpc_client, std::shared_ptr<AppController> app, QWidget* parent = nullptr);
 
+
+private slots:
+
+    void onCreateBoardClicked();
+
 };

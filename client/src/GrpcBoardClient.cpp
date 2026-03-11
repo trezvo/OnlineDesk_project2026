@@ -69,3 +69,25 @@ std::pair<bool, std::vector<BoardInfo>> GrpcBoardClient::fetchUserBoards() {
     
     return {true, boards_vec};
 }
+
+CreateBoardResult GrpcBoardClient::createBoard(const std::string& board_name){
+    if (login_data_.user_id.empty() || login_data_.user_token == 0) {
+        return {false, "Пользователь не авторизован", 0};
+    }
+
+    online_desk::board::CreateBoardRequest request;
+    request.set_user_id(login_data_.user_id);
+    request.set_user_token(login_data_.user_token);
+    request.set_board_name(board_name);
+
+    online_desk::board::CreateBoardResponse response;
+    grpc::ClientContext context;
+    grpc::Status status = board_stub_->CreateBoard(&context, request, &response);
+    
+    if (status.ok() && response.success()) {
+        return {true, response.message(), response.board_id()};
+    } else {
+        std::string error_msg = status.ok() ? response.message() : status.error_message();
+        return {false, error_msg, 0};
+    }
+}

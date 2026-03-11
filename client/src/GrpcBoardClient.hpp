@@ -25,6 +25,12 @@ struct BoardInfo {
     std::string board_name = "";
 };
 
+struct CreateBoardResult{
+    bool success = false;
+    std::string message = "";
+    uint64_t board_id = 0;
+};
+
 class GrpcBoardClient {
 public:
 
@@ -38,6 +44,8 @@ public:
     const LoginMetaData& get_login_data() const {
         return login_data_;
     }
+
+    CreateBoardResult createBoard(const std::string& board_name);
 
 private:
     

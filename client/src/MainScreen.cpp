@@ -4,6 +4,8 @@
 #include "BoardsButtonList.hpp"
 #include <QMainWindow>
 #include <QHBoxLayout>
+#include <QInputDialog>
+#include <QMessageBox> 
 #include <memory>
 
 
@@ -28,5 +30,30 @@ void MainScreen::SetupUI() {
     boards_list_ = new BoardsButtonList(grpc_client_, app_, this);
     layout_->addWidget(boards_list_);
 
+    QPushButton* create_board_ = new QPushButton("Создать доску", this);
+    create_board_->setFixedHeight(40);
+    layout_->addWidget(create_board_);
+
+    connect(create_board_, &QPushButton::clicked, this,  &MainScreen::onCreateBoardClicked);
+
     resize(800, 600);
+}
+
+void MainScreen::onCreateBoardClicked(){
+    bool ok;
+    QString board_name = QInputDialog::getText(this, "Создание доски", "Введите название доски", QLineEdit::Normal, "", &ok);
+
+    if (!ok || board_name.isEmpty()){
+        return;
+    }
+    auto result = grpc_client_->createBoard(board_name.toStdString());
+    
+    if (result.success) {
+        QMessageBox::information(this, "Успех", "Доска создана!");
+        boards_list_->UpdateUI();
+    }
+    else {
+        QMessageBox::warning(this, "Ошибка", 
+            QString::fromStdString(result.message));
+    }
 }

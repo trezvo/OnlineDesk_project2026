@@ -49,7 +49,6 @@ void AppController::onMainScreenFinished(uint64_t board_id) {
 }
 
 void AppController::showBoardScreen(uint64_t board_id) {
-
     board_screen_ = new BoardScreen(grpc_client_);
     board_screen_->setAttribute(Qt::WA_DeleteOnClose);
     board_screen_->show();

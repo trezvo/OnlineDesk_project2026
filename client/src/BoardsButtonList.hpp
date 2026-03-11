@@ -7,7 +7,6 @@
 #include <string>
 #include <memory>
 
-
 class BoardButton : public QPushButton {
 
     Q_OBJECT
@@ -38,11 +37,10 @@ class BoardsButtonList : public QWidget {
 
     void clear();
 
-    void UpdateUI();
-
 public:
 
     explicit BoardsButtonList(std::shared_ptr<GrpcBoardClient> grpc_client, std::shared_ptr<AppController> app, QWidget* parent = nullptr);
     ~BoardsButtonList() = default;
+    void UpdateUI();
 
 };
