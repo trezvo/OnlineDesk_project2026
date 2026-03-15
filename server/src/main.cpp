@@ -3,6 +3,7 @@
 #include <grpcpp/health_check_service_interface.h>
 #include <csignal>
 #include <memory>
+#include <iostream>
 #include "AuthenticationImpl.hpp"
 #include "BoardImpl.hpp"
 
@@ -36,6 +37,8 @@ void runServer(const std::string &server_address) {
         std::cerr << "Server starting gone wrong \n";
         return;
     }
+
+    std::cout << "server started" << std::endl;
 
     g_server->Wait();
 }

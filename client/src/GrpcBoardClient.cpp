@@ -1,5 +1,6 @@
 #include "GrpcBoardClient.hpp"
 #include <iostream>
+#include <chrono>
 #include <vector>
 #include <utility>
 #include <memory>
@@ -38,7 +39,9 @@ RegisterResult GrpcBoardClient::registerUser(const std::string& username, const 
     
     online_desk::auth::RegisterResponse response;
     grpc::ClientContext context;
-    
+
+    context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(10));
+
     std::cout << "here1" << std::endl;
     grpc::Status status = auth_stub_->UserRegister(&context, request, &response);
     std::cout << "here2" << std::endl;
@@ -46,10 +49,14 @@ RegisterResult GrpcBoardClient::registerUser(const std::string& username, const 
 
     if (status.ok() && response.register_succeed()) {
         return {true, response.message()};
-    } else {
-        std::string error_msg = status.ok() ? response.message() : status.error_message();
-        return {false, error_msg};
+    } 
+    else if (status.error_code() == grpc::StatusCode::UNAVAILABLE) {
+        std::cout << "unavailable" << std::endl;
     }
+    else if (status.error_code() == grpc::StatusCode::DEADLINE_EXCEEDED) {
+        std::cout << "deadline exceeded" << std::endl;
+    }
+    return {false, status.ok() ? response.message() : status.error_message()};
 }
 
 std::pair<bool, std::vector<BoardInfoInternal>> GrpcBoardClient::fetchUserBoards() {

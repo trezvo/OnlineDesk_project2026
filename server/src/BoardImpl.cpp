@@ -105,10 +105,10 @@ grpc::Status BoardServiceImpl::DeleteBoard(
     return grpc::Status::OK;
 }
 
-grpc::experimental::ServerBidiReactor<contracts::BoardUpdate, contracts::BoardUpdate>
-    *BoardServiceImpl::SubscribeBoard(grpc::experimental::CallbackServerContext *context
-    ) {
-        return new SessionReactor(context, session_manager_);
-}
+// grpc::experimental::ServerBidiReactor<contracts::BoardUpdate, contracts::BoardUpdate>
+//     *BoardServiceImpl::SubscribeBoard(grpc::experimental::CallbackServerContext *context
+//     ) {
+//         return new SessionReactor(context, session_manager_);
+// }
 
 }  // namespace board_module

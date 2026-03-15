@@ -34,7 +34,7 @@ class BoardServiceImpl final : public contracts::BoardService::ExperimentalWithC
     BoardsDataBase data_base_;
     std::mt19937_64 create_rand_64_;
     std::unordered_map<std::string, std::vector<uint64_t>> user_owned_boards_;
-    SessionManager session_manager_;
+    // SessionManager session_manager_;
 
 public:
     explicit BoardServiceImpl(
@@ -62,8 +62,8 @@ public:
         contracts::DeleteBoardResponse *response
     ) override;
 
-    grpc::experimental::ServerBidiReactor<contracts::BoardUpdate, contracts::BoardUpdate>
-        *SubscribeBoard(grpc::experimental::CallbackServerContext *context) override;
+    // grpc::experimental::ServerBidiReactor<contracts::BoardUpdate, contracts::BoardUpdate>
+    //     *SubscribeBoard(grpc::experimental::CallbackServerContext *context) override;
 };
 
 }  // namespace board_module

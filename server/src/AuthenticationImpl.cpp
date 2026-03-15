@@ -6,6 +6,7 @@
 #include <mutex>
 #include <random>
 #include <string>
+#include <iostream>
 
 namespace auth_module {
 
@@ -81,6 +82,8 @@ grpc::Status AuthenticationServiceImpl::UserRegister(
     const contract::RegisterRequest *request,
     contract::RegisterResponse *response
 ) {
+    std::cout << "here_register1" << std::endl;
+
     const std::string &username = request->username();
     const std::string &password = request->password();
 
