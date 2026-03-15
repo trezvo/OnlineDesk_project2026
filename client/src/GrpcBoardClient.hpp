@@ -7,6 +7,8 @@
 #include <grpcpp/grpcpp.h>
 #include "auth.grpc.pb.h"
 #include "board.grpc.pb.h"
+#include "BoardScreenFwd.hpp"
+#include "SessionReactor.hpp"
 
 struct LoginMetaData {
     bool success = false;
@@ -20,7 +22,7 @@ struct RegisterResult {
     std::string message = "";
 };
 
-struct BoardInfo {
+struct BoardInfoInternal {
     uint64_t board_id = 0;
     std::string board_name = "";
 };
@@ -31,6 +33,10 @@ struct CreateBoardResult{
     uint64_t board_id = 0;
 };
 
+
+using namespace online_desk::auth;
+using namespace online_desk::board;
+
 class GrpcBoardClient {
 public:
 
@@ -39,13 +45,18 @@ public:
     void login(const std::string& username, const std::string& password);
     RegisterResult registerUser
     (const std::string& username, const std::string& password);
-    std::pair<bool, std::vector<BoardInfo>> fetchUserBoards();
+    std::pair<bool, std::vector<BoardInfoInternal>> fetchUserBoards();
     
     const LoginMetaData& get_login_data() const {
         return login_data_;
     }
+    const uint64_t GetUserToken() const {
+        return login_data_.user_token;
+    }
+
 
     CreateBoardResult createBoard(const std::string& board_name);
+    SessionReactorInterface* connectToBoard(BoardScreen& board, uint64_t board_id);
 
 private:
     

@@ -18,7 +18,7 @@ void BoardButton::mouseDoubleClickEvent(QMouseEvent* event) {
     emit onDoubleClickedBoardButton(board_id_);
 }
 
-BoardsButtonList::BoardsButtonList(std::shared_ptr<GrpcBoardClient> grpc_client, std::shared_ptr<AppController> app, QWidget* parent)
+BoardsButtonList::BoardsButtonList(std::shared_ptr<GrpcBoardClient> grpc_client, AppController& app, QWidget* parent)
     : QWidget(parent)
     , grpc_client_(grpc_client)
     , app_(app) {
@@ -62,12 +62,12 @@ void BoardsButtonList::UpdateUI() {
     }
 
     for (const auto& [id, name] : owned_boards.second) {
-        BoardButton* new_button = new BoardButton(QString::fromStdString(name), id, this);
+        BoardButton* new_button = new BoardButton(QString::fromStdString(name + " id=" + std::to_string(id)), id, this);
         new_button->setFixedHeight(20);
         new_button->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
         connect(new_button, &BoardButton::onDoubleClickedBoardButton, 
-                app_.get(), &AppController::onMainScreenFinished);
+                &app_, &AppController::onMainScreenFinished);
         
         layout_->addWidget(new_button);
         buttons_.append(new_button);

@@ -1,26 +1,25 @@
+#include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
-#include <grpcpp/ext/proto_server_reflection_plugin.h>
-
+#include <csignal>
+#include <memory>
 #include "AuthenticationImpl.hpp"
 #include "BoardImpl.hpp"
-
-#include <memory>
-#include <csignal>
 
 std::unique_ptr<grpc::Server> g_server;
 
 void stopServer(int) {
-
     if (g_server) {
         g_server->Shutdown();
     }
 }
 
-void runServer(const std::string& server_address) {
-
-    auto authentication_service = std::make_shared<auth_module::AuthenticationServiceImpl>();
-    auto board_service = std::make_shared<board_module::BoardServiceImpl>(authentication_service);
+void runServer(const std::string &server_address) {
+    auto authentication_service =
+        std::make_shared<auth_module::AuthenticationServiceImpl>();
+    auto board_service =
+        std::make_shared<board_module::BoardServiceImpl>(authentication_service
+        );
 
     grpc::EnableDefaultHealthCheckService(true);
     grpc::reflection::InitProtoReflectionServerBuilderPlugin();
@@ -39,11 +38,9 @@ void runServer(const std::string& server_address) {
     }
 
     g_server->Wait();
-
 }
 
-
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     std::signal(SIGINT, stopServer);
     std::signal(SIGTERM, stopServer);
 

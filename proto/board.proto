@@ -6,7 +6,7 @@ service BoardService {
     rpc FetchUserBoards(FetchUserBoardsRequest) returns (FetchUserBoardsResponse);
     rpc CreateBoard(CreateBoardRequest) returns (CreateBoardResponse);
     rpc DeleteBoard(DeleteBoardRequest) returns (DeleteBoardResponse);
-    rpc SubscribeBoard(stream SubscribeStreamChunck) returns (stream SubscribeStreamChunck);
+    rpc SubscribeBoard(stream BoardUpdate) returns (stream BoardUpdate);
 }
 
 message FetchUserBoardsRequest {
@@ -47,22 +47,25 @@ message DeleteBoardResponse {
     string message = 2;
 }
 
+
 message WidgetInfo {
     int32 coord_x = 1;
     int32 coord_y = 2;
-    string content_ = 3;
+    string content = 3;
 }
 
-
-enum WidgetEditType {
-    CREATE = 0;
-    UPDATE = 1;
-    DELETE = 2;
+enum ActionType {
+    EXIT = 0;
+    JOIN = 1;
+    CREATE = 2;
+    UPDATE = 3;
+    DELETE = 4;
+    FAIL = 5;
 }
 
-message SubscribeStreamChunck {
-    WidgetEditType edit_type = 1;
-    string widget_id = 2;
-    WidgetInfo update_data = 3;
+message BoardUpdate {
+    uint64 user_token = 1;
+    ActionType action_type = 2;
+    uint64 widget_id = 3;
+    WidgetInfo update_data = 4;
 }
-

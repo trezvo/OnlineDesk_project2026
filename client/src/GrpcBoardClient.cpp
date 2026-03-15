@@ -2,6 +2,7 @@
 #include <iostream>
 #include <vector>
 #include <utility>
+#include <memory>
 
 GrpcBoardClient::GrpcBoardClient(const std::string& server_address) {
     auto channel = grpc::CreateChannel(server_address, grpc::InsecureChannelCredentials());
@@ -37,8 +38,12 @@ RegisterResult GrpcBoardClient::registerUser(const std::string& username, const 
     
     online_desk::auth::RegisterResponse response;
     grpc::ClientContext context;
-    grpc::Status status = auth_stub_->UserRegister(&context, request, &response);
     
+    std::cout << "here1" << std::endl;
+    grpc::Status status = auth_stub_->UserRegister(&context, request, &response);
+    std::cout << "here2" << std::endl;
+    
+
     if (status.ok() && response.register_succeed()) {
         return {true, response.message()};
     } else {
@@ -47,7 +52,7 @@ RegisterResult GrpcBoardClient::registerUser(const std::string& username, const 
     }
 }
 
-std::pair<bool, std::vector<BoardInfo>> GrpcBoardClient::fetchUserBoards() {
+std::pair<bool, std::vector<BoardInfoInternal>> GrpcBoardClient::fetchUserBoards() {
     online_desk::board::FetchUserBoardsRequest request;
     request.set_user_id(login_data_.user_id);
     request.set_user_token(login_data_.user_token);
@@ -60,7 +65,7 @@ std::pair<bool, std::vector<BoardInfo>> GrpcBoardClient::fetchUserBoards() {
         return {false, {}};
     }
 
-    std::vector<BoardInfo> boards_vec;
+    std::vector<BoardInfoInternal> boards_vec;
 
     for (int i = 0; i < response.boards_size(); i++) {
         const auto& board_info = response.boards(i);
@@ -83,11 +88,20 @@ CreateBoardResult GrpcBoardClient::createBoard(const std::string& board_name){
     online_desk::board::CreateBoardResponse response;
     grpc::ClientContext context;
     grpc::Status status = board_stub_->CreateBoard(&context, request, &response);
-    
+
     if (status.ok() && response.success()) {
         return {true, response.message(), response.board_id()};
     } else {
         std::string error_msg = status.ok() ? response.message() : status.error_message();
         return {false, error_msg, 0};
     }
+
+}
+
+SessionReactorInterface* GrpcBoardClient::connectToBoard(BoardScreen& board, uint64_t board_id) {
+
+    auto context = std::make_unique<grpc::ClientContext>();
+    context->AddMetadata("custom-board-id", std::to_string(board_id));
+
+    return new SessionReactor(board_stub_.get(), std::move(context), board);
 }

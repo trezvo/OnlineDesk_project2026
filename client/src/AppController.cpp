@@ -10,7 +10,6 @@
 AppController::AppController(std::shared_ptr<GrpcBoardClient> grpc_client, QObject* parent)
     : QObject(parent)
     , grpc_client_(grpc_client) {
-    self_shared_ = std::shared_ptr<AppController>(this);
 }
 
 void AppController::showAuthDialog() {
@@ -36,20 +35,18 @@ void AppController::onAuthDialogFinished() {
 
 void AppController::showMainScreen() {
 
-    main_screen_ = new MainScreen(grpc_client_, self_shared_);
+    main_screen_ = new MainScreen(grpc_client_, *this);
     main_screen_->setAttribute(Qt::WA_DeleteOnClose);
     main_screen_->show();
 }
 
 void AppController::onMainScreenFinished(uint64_t board_id) {
-    // здесь нужно написать fetch доски с сервера, вероятно
-    // именно здесь инициализируем поток сервер <-> клиент
     main_screen_->close();
     showBoardScreen(board_id);
 }
 
 void AppController::showBoardScreen(uint64_t board_id) {
-    board_screen_ = new BoardScreen(grpc_client_);
+    board_screen_ = new BoardScreen(grpc_client_, board_id);
     board_screen_->setAttribute(Qt::WA_DeleteOnClose);
     board_screen_->show();
 }

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "AppControllerFwd.hpp"
-#include "GrpcBoardClient.hpp"
+#include "GrpcBoardClientFwd.hpp"
 #include <QHBoxLayout>
 #include <QPushButton>
 #include <string>
@@ -30,7 +30,7 @@ class BoardsButtonList : public QWidget {
     Q_OBJECT
 
     std::shared_ptr<GrpcBoardClient> grpc_client_;
-    std::shared_ptr<AppController> app_;
+    AppController& app_;
     QVector<BoardButton*> buttons_;
     QHBoxLayout* layout_;
     QPushButton* refresh_button_ = nullptr;
@@ -39,7 +39,7 @@ class BoardsButtonList : public QWidget {
 
 public:
 
-    explicit BoardsButtonList(std::shared_ptr<GrpcBoardClient> grpc_client, std::shared_ptr<AppController> app, QWidget* parent = nullptr);
+    explicit BoardsButtonList(std::shared_ptr<GrpcBoardClient> grpc_client, AppController& app, QWidget* parent = nullptr);
     ~BoardsButtonList() = default;
     void UpdateUI();
 

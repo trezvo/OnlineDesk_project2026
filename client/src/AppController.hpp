@@ -14,7 +14,6 @@ class AppController : public QObject {
     Q_OBJECT
 
     const std::shared_ptr<GrpcBoardClient> grpc_client_;
-    std::shared_ptr<AppController> self_shared_ = nullptr;
     AuthDialog* auth_dialog_;
     MainScreen* main_screen_;
     BoardScreen* board_screen_;
