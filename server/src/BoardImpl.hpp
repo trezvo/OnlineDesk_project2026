@@ -21,20 +21,22 @@ namespace board_module {
 namespace contracts = online_desk::board;
 
 class BoardsDataBase {
+
+    mutable std::mutex db_edit_mutex_;
+    std::unordered_map<uint64_t, std::string> boards_;
+
 public:
     void SetBoard(uint64_t board_id, std::string board_name);
     std::optional<std::string> GetBoard(uint64_t board_id) const;
 
-private:
-    std::unordered_map<uint64_t, std::string> boards_;
 };
 
-class BoardServiceImpl final : public contracts::BoardService::ExperimentalWithCallbackMethod_SubscribeBoard<contracts::BoardService::Service> {
+class BoardServiceImpl final : public contracts::BoardService::WithCallbackMethod_SubscribeBoard<contracts::BoardService::Service> {
     std::shared_ptr<auth_module::AuthenticationServiceImpl> auth_impl_;
     BoardsDataBase data_base_;
     std::mt19937_64 create_rand_64_;
     std::unordered_map<std::string, std::vector<uint64_t>> user_owned_boards_;
-    // SessionManager session_manager_;
+    SessionManager session_manager_;
 
 public:
     explicit BoardServiceImpl(
@@ -62,8 +64,8 @@ public:
         contracts::DeleteBoardResponse *response
     ) override;
 
-    // grpc::experimental::ServerBidiReactor<contracts::BoardUpdate, contracts::BoardUpdate>
-    //     *SubscribeBoard(grpc::experimental::CallbackServerContext *context) override;
+    grpc::ServerBidiReactor<contracts::BoardUpdate, contracts::BoardUpdate>
+        *SubscribeBoard(grpc::CallbackServerContext *context) override;
 };
 
 }  // namespace board_module

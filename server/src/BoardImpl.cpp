@@ -2,6 +2,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <iostream>
 
 namespace board_module {
 
@@ -12,7 +13,9 @@ void BoardsDataBase::SetBoard(uint64_t board_id, std::string board_name) {
 }
 
 std::optional<std::string> BoardsDataBase::GetBoard(uint64_t board_id) const {
-    if (board_id >= boards_.size()) {
+    std::lock_guard<std::mutex> lock(db_edit_mutex_);
+    
+    if (!boards_.contains(board_id)) {
         return std::nullopt;
     }
 
@@ -29,10 +32,10 @@ BoardServiceImpl::~BoardServiceImpl() = default;
 
 std::string BoardServiceImpl::GetBoardName(uint64_t board_id) const {
     auto board_name = data_base_.GetBoard(board_id);
-    if (board_name.has_value()) {
-        return board_name.value();
+    if (!board_name.has_value()) {
+        return "";
     }
-    return "";
+    return board_name.value();
 }
 
 grpc::Status BoardServiceImpl::FetchUserBoards(
@@ -49,11 +52,14 @@ grpc::Status BoardServiceImpl::FetchUserBoards(
         return grpc::Status::OK;
     }
 
+    std::cout << "fetch request from " << user_id << ", amout of its boards: " << user_owned_boards_[user_id].size() << std::endl;
+
     response->set_success(true);
 
     for (const uint64_t &board_id : user_owned_boards_[user_id]) {
         std::string board_name = GetBoardName(board_id);
         if (board_name.empty()) {
+            std::cout << board_id << " - skipped" << std::endl;
             continue;
         }
 
@@ -61,6 +67,8 @@ grpc::Status BoardServiceImpl::FetchUserBoards(
         board->set_board_id(board_id);
         board->set_board_name(std::move(board_name));
     }
+
+    std::cout << "sending of list with size: " << response->boards_size() << std::endl;
 
     return grpc::Status::OK;
 }
@@ -86,7 +94,7 @@ grpc::Status BoardServiceImpl::CreateBoard(
         return grpc::Status::OK;
     }
 
-    uint64_t new_board_id = create_rand_64_();
+    uint64_t new_board_id = create_rand_64_() % 10'000; // mod 1e5 so far 
     data_base_.SetBoard(new_board_id, board_name);
     user_owned_boards_[user_id].push_back(new_board_id);
 
@@ -105,10 +113,10 @@ grpc::Status BoardServiceImpl::DeleteBoard(
     return grpc::Status::OK;
 }
 
-// grpc::experimental::ServerBidiReactor<contracts::BoardUpdate, contracts::BoardUpdate>
-//     *BoardServiceImpl::SubscribeBoard(grpc::experimental::CallbackServerContext *context
-//     ) {
-//         return new SessionReactor(context, session_manager_);
-// }
+grpc::ServerBidiReactor<contracts::BoardUpdate, contracts::BoardUpdate>
+    *BoardServiceImpl::SubscribeBoard(grpc::CallbackServerContext *context
+    ) {
+        return new SessionReactor(context, session_manager_);
+}
 
 }  // namespace board_module

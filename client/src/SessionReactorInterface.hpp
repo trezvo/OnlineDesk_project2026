@@ -6,7 +6,7 @@
 
 using namespace online_desk::board;
 
-class SessionReactorInterface : public grpc::experimental::ClientBidiReactor<BoardUpdate, BoardUpdate> {
+class SessionReactorInterface : public grpc::ClientBidiReactor<BoardUpdate, BoardUpdate> {
 
 public:
     virtual void AddUpdate(BoardUpdate request) = 0;

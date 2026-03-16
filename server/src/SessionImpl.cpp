@@ -49,9 +49,11 @@ SessionInstance* SessionInstance::JoinToSession(SessionReactor* member) {
     return this;
 }
 
-SessionReactor::SessionReactor(grpc::experimental::CallbackServerContext* context, SessionManager& manager) 
+SessionReactor::SessionReactor(grpc::CallbackServerContext* context, SessionManager& manager) 
     : context_(context)
-    , manager_(manager) {
+    , manager_(manager)
+    , is_alive(true)
+    , is_writing_(false) {
 
     const auto& metadata = context->client_metadata();
 
@@ -98,6 +100,8 @@ void SessionReactor::Broadcast(const contracts::BoardUpdate &request) {
 
     uint64_t widget_id = request.widget_id();
 
+    std::cout << "income update: id=" << widget_id << std::endl;
+
     const online_desk::board::WidgetInfo& update_info = request.update_data();
 
     if (action == online_desk::board::DELETE) {
@@ -136,27 +140,45 @@ void SessionReactor::ProcessMessage(const contracts::BoardUpdate &msg) {
         return;
     }
 
-    std::lock_guard<std::mutex> lock(write_mutex_);
-
+    
     auto msg_copy = std::make_unique<contracts::BoardUpdate>(msg);
     msg_copy->set_user_token(0);
-    write_queue_.push_back(std::move(msg_copy));
+        
+    {
+        std::lock_guard<std::mutex> lock(write_mutex_);
+        write_queue_.push_back(std::move(msg_copy));
+    }
 
-    StartWrite(write_queue_.back().get());
+    ProcessQueue();
+}
+
+void SessionReactor::ProcessQueue() {
+    if (!is_alive || is_writing_.exchange(true)) {
+        return;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(write_mutex_);
+        msg = std::move(write_queue_.front());
+        write_queue_.pop_front();
+    }
+
+    StartWrite(msg.get());
 }
 
 void SessionReactor::OnWriteDone(bool ok) {
-    
-    {
-        std::lock_guard<std::mutex> lock(write_mutex_);
-        if (!write_queue_.empty()) {
-            write_queue_.pop_front();
-        }
+    if (!is_alive) {
+        return;
     }
+
+    is_writing_ = false;
 
     if (!ok) {
         Shutdown();
+        return;
     }
+
+    ProcessQueue();
 }
 
 void SessionReactor::OnReadDone(bool ok) {

@@ -73,6 +73,7 @@ std::pair<bool, std::vector<BoardInfoInternal>> GrpcBoardClient::fetchUserBoards
     }
 
     std::vector<BoardInfoInternal> boards_vec;
+    std::cout << "income boards list size: " << response.boards_size() << std::endl;
 
     for (int i = 0; i < response.boards_size(); i++) {
         const auto& board_info = response.boards(i);

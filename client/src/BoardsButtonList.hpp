@@ -2,7 +2,7 @@
 
 #include "AppControllerFwd.hpp"
 #include "GrpcBoardClientFwd.hpp"
-#include <QHBoxLayout>
+#include <QVBoxLayout>
 #include <QPushButton>
 #include <string>
 #include <memory>
@@ -32,8 +32,8 @@ class BoardsButtonList : public QWidget {
     std::shared_ptr<GrpcBoardClient> grpc_client_;
     AppController& app_;
     QVector<BoardButton*> buttons_;
-    QHBoxLayout* layout_;
-    QPushButton* refresh_button_ = nullptr;
+    QVBoxLayout* layout_;
+    QPushButton* refresh_button_;
 
     void clear();
 

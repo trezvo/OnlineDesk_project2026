@@ -19,7 +19,6 @@ class Widget : public QDialog {
     int y_;
 
     uint64_t widget_id_;
-    BoardScreen* board_;
     QLineEdit* x_setup_line_;
     QLineEdit* y_setup_line_;
     QPushButton* update_button_;
@@ -38,6 +37,6 @@ signals:
 
 public:
 
-    explicit Widget(uint64_t widget_id, BoardScreen* board, QWidget* parent = nullptr);
+    explicit Widget(uint64_t widget_id, QWidget* parent = nullptr);
     void UpdateCoords(int new_x, int new_y);
 };

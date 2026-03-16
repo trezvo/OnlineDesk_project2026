@@ -38,21 +38,14 @@ void MainScreen::SetupUI() {
     create_board_->setFixedHeight(40);
     layout_->addWidget(create_board_);
 
-    QVBoxLayout* board_party = new QVBoxLayout(centralWidget);
-    
-    QLabel* party_label = new QLabel("Присоединиться к доске:", centralWidget);
-    board_party->addWidget(party_label);    
-
-    lobby_id_line_ = new QLineEdit(centralWidget);
+    lobby_id_line_ = new QLineEdit(this);
     lobby_id_line_->setPlaceholderText("id доски");
     lobby_id_line_->setMinimumHeight(20);
-    board_party->addWidget(lobby_id_line_);
+    layout_->addWidget(lobby_id_line_);
 
-    lobby_join_ = new QPushButton(centralWidget);
+    lobby_join_ = new QPushButton("Присоединиться к сессии: ", this);
     lobby_join_ ->setMinimumHeight(40);
-    board_party->addWidget(lobby_join_);
-
-    layout_->addLayout(board_party);
+    layout_->addWidget(lobby_join_);
 
     connect(create_board_, &QPushButton::clicked, this,  &MainScreen::onCreateBoardClicked);
     connect(this, &MainScreen::onMainScreenFinished, &app_, &AppController::onMainScreenFinished);

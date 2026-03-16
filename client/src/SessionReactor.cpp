@@ -7,7 +7,7 @@ SessionReactor::SessionReactor(BoardService::Stub* stub_, std::unique_ptr<grpc::
     , screen_instance_(board)
     , is_writing_(false) {
         
-    stub_->experimental_async()->SubscribeBoard(context.get(), this);
+    stub_->async()->SubscribeBoard(context.get(), this);
 
     StartCall();
     StartRead(&read_buffer_);

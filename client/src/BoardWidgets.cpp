@@ -7,10 +7,9 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 
-Widget::Widget(uint64_t widget_id, BoardScreen* board, QWidget* parent)
+Widget::Widget(uint64_t widget_id, QWidget* parent)
     : QDialog(parent)
-    , widget_id_(widget_id)
-    , board_(board) {
+    , widget_id_(widget_id) {
     SetupUI();
 }
 
@@ -33,13 +32,13 @@ void Widget::SetupUI() {
     QFormLayout* form_layout = new QFormLayout();
     form_layout->setSpacing(10);
 
-    QLineEdit* x_setup_line_ = new QLineEdit(this);
+    x_setup_line_ = new QLineEdit(this);
     x_setup_line_->setPlaceholderText("x");
     x_setup_line_->setMinimumHeight(20);
     form_layout->addRow("x:", x_setup_line_);
 
     
-    QLineEdit* y_setup_line_ = new QLineEdit(this);
+    y_setup_line_ = new QLineEdit(this);
     y_setup_line_->setPlaceholderText("y");
     y_setup_line_->setMinimumHeight(20);
     form_layout->addRow("y:", y_setup_line_);
@@ -60,7 +59,6 @@ void Widget::SetupUI() {
 
     connect(update_button_, &QPushButton::clicked, this, &Widget::onUpdateClicled);
     connect(delete_button_, &QPushButton::clicked, this, &Widget::onDeleteClicked);
-
 }
 
 void Widget::UpdateCoords(int new_x, int new_y) {

@@ -10,6 +10,14 @@ set(CLIENT_SOURCES
     ${SOURCES}
 )
 
+find_package(PkgConfig REQUIRED)
+
+pkg_check_modules(GRPC REQUIRED 
+    grpc++ 
+    grpc 
+    gpr
+)
+
 add_executable(desk_client ${CLIENT_SOURCES})
 
 target_link_libraries(desk_client PRIVATE
@@ -17,11 +25,14 @@ target_link_libraries(desk_client PRIVATE
     proto_generated
     ${GRPC_LIBRARIES}
     pthread
+    dl
+    rt
 )
 
-target_include_directories(
-    desk_client PRIVATE
+target_include_directories(desk_client PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${GRPC_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_BINARY_DIR}/../generated
 )
 
 set_target_properties(desk_client PROPERTIES

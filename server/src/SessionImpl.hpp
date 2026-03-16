@@ -48,22 +48,26 @@ public:
 };
 
 class SessionReactor final
-    : public grpc::
-          experimental::ServerBidiReactor<online_desk::board::BoardUpdate, online_desk::board::BoardUpdate> {
+    : public grpc::ServerBidiReactor<online_desk::board::BoardUpdate, online_desk::board::BoardUpdate> {
 
-    grpc::experimental::CallbackServerContext *context_;
+    grpc::CallbackServerContext *context_;
     SessionManager& manager_;
     SessionInstance* session_instance_;
     std::atomic<bool> is_alive;
+
+    std::atomic<bool> is_writing_;
     std::mutex write_mutex_;
+
     std::list<std::unique_ptr<contracts::BoardUpdate>> write_queue_;
     contracts::BoardUpdate request_;
+    std::unique_ptr<contracts::BoardUpdate> msg;
 
+    void ProcessQueue();
     void Broadcast(const contracts::BoardUpdate &request);
     void Shutdown();
 
 public:
-    explicit SessionReactor(grpc::experimental::CallbackServerContext *context, SessionManager& manager);
+    explicit SessionReactor(grpc::CallbackServerContext *context, SessionManager& manager);
 
     void ProcessMessage(const contracts::BoardUpdate &msg);
     void OnWriteDone(bool ok) override;

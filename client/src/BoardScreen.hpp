@@ -16,18 +16,19 @@ using namespace online_desk::board;
 class BoardScreen : public QMainWindow {
     Q_OBJECT
 
-    void SetupUI();
-
     std::shared_ptr<GrpcBoardClient> grpc_client_;
     uint64_t board_id_;
 
-    std::mt19937_64 gen64; 
+    std::mt19937_64 gen64_; 
     std::mutex widget_edit_mutex_;
     std::unordered_map<uint64_t, Widget*> board_widgets_;
 
     SessionReactorInterface* stream_;
 
     QPushButton* create_widget_button_;
+
+    void SetupUI();
+    Widget* ProduceWidget(uint64_t widget_id);
 
 public slots:
 

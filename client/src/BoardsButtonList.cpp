@@ -3,10 +3,11 @@
 #include "BoardsButtonList.hpp"
 #include <QString>
 #include <QPushButton>
-#include <QHBoxLayout>
+#include <QVBoxLayout>
 #include <memory>
 #include <string>
 #include <utility>
+#include <iostream>
 
 
 BoardButton::BoardButton(const QString& board_name, uint64_t board_id, QWidget* parent)
@@ -23,7 +24,7 @@ BoardsButtonList::BoardsButtonList(std::shared_ptr<GrpcBoardClient> grpc_client,
     , grpc_client_(grpc_client)
     , app_(app) {
 
-    layout_ = new QHBoxLayout(this);
+    layout_ = new QVBoxLayout(this);
     layout_->setContentsMargins(0, 0, 0, 0);
     layout_->setSpacing(2);
     layout_->setAlignment(Qt::AlignTop);
@@ -62,7 +63,8 @@ void BoardsButtonList::UpdateUI() {
     }
 
     for (const auto& [id, name] : owned_boards.second) {
-        BoardButton* new_button = new BoardButton(QString::fromStdString(name + " id=" + std::to_string(id)), id, this);
+        std::string button_title = name + " id=" + std::to_string(id);
+        BoardButton* new_button = new BoardButton(QString::fromStdString(button_title), id, this);
         new_button->setFixedHeight(20);
         new_button->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
@@ -73,6 +75,7 @@ void BoardsButtonList::UpdateUI() {
         buttons_.append(new_button);
     }
 
+    std::cout << "fetched boards list of size: " << owned_boards.second.size() << std::endl;
     layout_->addStretch();
     this->show();
 }
