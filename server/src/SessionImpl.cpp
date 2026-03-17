@@ -3,6 +3,7 @@
 #include <mutex>
 #include <set>
 #include <utility>
+#include <iostream>
 
 namespace board_module {
 
@@ -80,6 +81,7 @@ SessionReactor::SessionReactor(grpc::CallbackServerContext* context, SessionMana
 
     }
 
+    std::cout << "session reactor succesfuly init for board id=" << board_id << std::endl;
     
     StartRead(&request_);
 }
@@ -104,7 +106,7 @@ void SessionReactor::Broadcast(const contracts::BoardUpdate &request) {
 
     const online_desk::board::WidgetInfo& update_info = request.update_data();
 
-    if (action == online_desk::board::DELETE) {
+    if (action == online_desk::board::ActionType::DELETE) {
         if (!session_instance_->widgets_storage_.contains(widget_id)) {
             return;
         }
@@ -139,14 +141,18 @@ void SessionReactor::ProcessMessage(const contracts::BoardUpdate &msg) {
     if (!is_alive) {
         return;
     }
-
-    
-    auto msg_copy = std::make_unique<contracts::BoardUpdate>(msg);
-    msg_copy->set_user_token(0);
         
     {
         std::lock_guard<std::mutex> lock(write_mutex_);
-        write_queue_.push_back(std::move(msg_copy));
+
+        if (is_writing_) {
+            write_queue_.push_back(msg);
+        }
+        else {
+            request_ = msg;
+            StartWrite(&request_);
+        }
+
     }
 
     ProcessQueue();
@@ -159,11 +165,17 @@ void SessionReactor::ProcessQueue() {
 
     {
         std::lock_guard<std::mutex> lock(write_mutex_);
-        msg = std::move(write_queue_.front());
+
+        if (write_queue_.empty()) {
+            is_writing_ = false;
+            return;
+        }
+
+        request_ = std::move(write_queue_.front());
         write_queue_.pop_front();
     }
 
-    StartWrite(msg.get());
+    StartWrite(&request_);
 }
 
 void SessionReactor::OnWriteDone(bool ok) {

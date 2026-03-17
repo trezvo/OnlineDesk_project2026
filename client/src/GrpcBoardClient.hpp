@@ -8,6 +8,7 @@
 #include "auth.grpc.pb.h"
 #include "board.grpc.pb.h"
 #include "BoardScreenFwd.hpp"
+#include "BoardWorkerInterface.hpp"
 #include "SessionReactor.hpp"
 
 struct LoginMetaData {
@@ -56,7 +57,7 @@ public:
 
 
     CreateBoardResult createBoard(const std::string& board_name);
-    SessionReactorInterface* connectToBoard(BoardScreen& board, uint64_t board_id);
+    SessionReactorInterface* connectToBoard(BoardWorkerInterface& worker, uint64_t board_id);
 
 private:
     

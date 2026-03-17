@@ -2,22 +2,25 @@
 #include "BoardScreen.hpp"
 #include "board.grpc.pb.h"
 #include "board.pb.h"
+#include <QCoreApplication>
 #include <QPushButton>
+#include <QThread>
 #include <memory>
 #include <chrono>
+#include <iostream>
 
 BoardScreen::BoardScreen(std::shared_ptr<GrpcBoardClient> grpc_client, uint64_t board_id, QWidget* parent)
     : QMainWindow(parent)
     , grpc_client_(grpc_client)
     , board_id_(board_id)
     , gen64_(std::chrono::system_clock::now().time_since_epoch().count()) {
-    stream_ = grpc_client_->connectToBoard(*this, board_id_);
+    qRegisterMetaType<online_desk::board::BoardUpdate>("online_desk::board::BoardUpdate");
     SetupUI();
 }
 
 void BoardScreen::SetupUI() {
 
-    setWindowTitle("Окно сессии");
+    setWindowTitle(QString::fromStdString("Board № " + std::to_string(board_id_)));
     resize(800, 600);
     
     QWidget* centralWidget = new QWidget(this);
@@ -27,7 +30,26 @@ void BoardScreen::SetupUI() {
 
     centralWidget->setStyleSheet("background-color: #ed9898;");
 
+    QThread* worker_thread = new QThread(this);
+    worker_ = new BoardWorker(grpc_client_, board_id_);
+
+    worker_->moveToThread(worker_thread);
+
     connect(create_widget_button_, &QPushButton::clicked, this, &BoardScreen::create_widget);
+
+    connect(worker_thread, &QThread::started, worker_, &BoardWorker::runWorking);
+    connect(this, &BoardScreen::sendSessionUpdate, worker_, &BoardWorker::sendSessionUpdate);
+
+    std::cout << this->thread() << ' ' << worker_->thread() <<  std::endl;
+
+    connect(worker_, &BoardWorker::printUpdate, this, &BoardScreen::acceptBoardUpdate);
+    connect(worker_thread, &QThread::finished, worker_, &QObject::deleteLater);
+
+    worker_thread->start();
+
+    if (!worker_thread->isRunning()) {
+        std::cout << "does not running" << std::endl;
+    }
 }
 
 Widget* BoardScreen::ProduceWidget(uint64_t widget_id) {
@@ -42,12 +64,26 @@ void BoardScreen::create_widget() {
     uint64_t widget_id = gen64_();
 
     Widget* new_widget = ProduceWidget(widget_id);
+    {
+        std::lock_guard<std::mutex> lock(widget_edit_mutex_);
+        board_widgets_[widget_id] = new_widget;
+    }
+    
+    online_desk::board::BoardUpdate request;
+    request.set_action_type(online_desk::board::CREATE);
+    request.set_widget_id(widget_id);
 
-    std::lock_guard<std::mutex> lock(widget_edit_mutex_);
-    board_widgets_[widget_id] = new_widget;
+    auto [x, y] = new_widget->GetCoords();
+
+    online_desk::board::WidgetInfo* difference = request.mutable_update_data();
+    difference->set_coord_x(x);
+    difference->set_coord_y(y);
+    difference->set_content("");
+
+    worker_->sendSessionUpdate(std::move(request));
 }
 
-void BoardScreen::UpdateBoard(BoardUpdate upd) {
+void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
 
     using namespace online_desk::board;
 
@@ -92,16 +128,16 @@ void BoardScreen::UpdateBoard(BoardUpdate upd) {
     }
 }
 
-void BoardScreen::requestUpdate(uint64_t widget_id, WidgetUpdate upd) {
+void BoardScreen::requestUpdate(WidgetUpdate upd) {
 
     {
         std::lock_guard<std::mutex> lock(widget_edit_mutex_);
 
-        if (!board_widgets_.contains(widget_id)) {
+        if (!board_widgets_.contains(upd.widget_id)) {
             return;
         }
 
-        board_widgets_[widget_id]->UpdateCoords(upd.new_x, upd.new_y);
+        board_widgets_[upd.widget_id]->UpdateCoords(upd.new_x, upd.new_y);
     }
 
     online_desk::board::BoardUpdate request;
@@ -113,9 +149,19 @@ void BoardScreen::requestUpdate(uint64_t widget_id, WidgetUpdate upd) {
 
     request.set_user_token(grpc_client_->GetUserToken());
     request.set_action_type(online_desk::board::ActionType::UPDATE);
-    request.set_widget_id(widget_id);
+    request.set_widget_id(upd.widget_id);
 
-    stream_->AddUpdate(std::move(request));
+    std::cout << "update request got to end of Board method" << std::endl;
+
+    qDebug() << "[MainWindow::handleData] Поток выполнения:" 
+                << QThread::currentThreadId();
+    qDebug() << "[MainWindow::handleData] Главный поток:" 
+                << QCoreApplication::instance()->thread()->currentThreadId();
+    qDebug() << "[MainWindow::handleData] Главный поток:" << qMetaTypeId<BoardUpdate>();
+    
+    worker_->sendSessionUpdate(std::move(request));
+
+    std::cout << "after emit" <<std::endl;
 }
 
 void BoardScreen::requestDelete(uint64_t widget_id) {
@@ -136,5 +182,7 @@ void BoardScreen::requestDelete(uint64_t widget_id) {
     online_desk::board::BoardUpdate request;
     request.set_user_token(grpc_client_->GetUserToken());
     request.set_action_type(online_desk::board::ActionType::DELETE);
-    stream_->AddUpdate(std::move(request));
+    request.set_widget_id(widget_id);
+
+    worker_->sendSessionUpdate(std::move(request));
 }

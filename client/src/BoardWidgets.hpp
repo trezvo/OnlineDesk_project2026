@@ -5,8 +5,10 @@
 #include <QString>
 #include <QLineEdit>
 #include <string>
+#include <utility>
 
 struct WidgetUpdate {
+    uint64_t widget_id;
     int new_x;
     int new_y;
 };
@@ -32,11 +34,12 @@ public slots:
 
 signals:
 
-    void requestUpdate(uint64_t widget_id, WidgetUpdate request);
+    void requestUpdate(WidgetUpdate request);
     void requestDelete(uint64_t widget_id);
 
 public:
 
     explicit Widget(uint64_t widget_id, QWidget* parent = nullptr);
     void UpdateCoords(int new_x, int new_y);
+    std::pair<int, int> GetCoords();
 };

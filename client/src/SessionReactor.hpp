@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SessionReactorInterface.hpp"
-#include "BoardScreen.hpp"
+#include "BoardWorkerInterface.hpp"
 #include <grpcpp/grpcpp.h>
 #include "board.grpc.pb.h"
 #include "board.pb.h"
@@ -9,17 +9,19 @@
 #include <mutex>
 #include <queue>
 #include <atomic>
+#include <condition_variable>
 
 using namespace online_desk::board;
 
 class SessionReactor : public SessionReactorInterface {
 
     std::atomic<bool> is_running_;
-    BoardScreen& screen_instance_;
+    BoardWorkerInterface& board_worker_;
     BoardUpdate read_buffer_;
     BoardUpdate write_buffer_;
     
     std::atomic<bool> is_writing_;
+    std::condition_variable writing_cv_;
     std::mutex write_queue_mutex_;
     std::queue<BoardUpdate> write_queue_;
 
@@ -28,7 +30,7 @@ class SessionReactor : public SessionReactorInterface {
 
 public:
 
-    explicit SessionReactor(BoardService::Stub* stub_, std::unique_ptr<grpc::ClientContext> context, BoardScreen& screen); 
+    explicit SessionReactor(BoardService::Stub* stub_, std::unique_ptr<grpc::ClientContext> context, BoardWorkerInterface& worker); 
 
     void AddUpdate(BoardUpdate request) override;
 
@@ -36,6 +38,6 @@ public:
     void OnReadDone(bool ok) override;
     void OnDone(const grpc::Status& status) override;
 
-    void Shutdown();
+    void Shutdown() override;
 
 };

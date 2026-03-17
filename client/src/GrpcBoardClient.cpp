@@ -106,10 +106,10 @@ CreateBoardResult GrpcBoardClient::createBoard(const std::string& board_name){
 
 }
 
-SessionReactorInterface* GrpcBoardClient::connectToBoard(BoardScreen& board, uint64_t board_id) {
+SessionReactorInterface* GrpcBoardClient::connectToBoard(BoardWorkerInterface& worker, uint64_t board_id) {
 
     auto context = std::make_unique<grpc::ClientContext>();
     context->AddMetadata("custom-board-id", std::to_string(board_id));
 
-    return new SessionReactor(board_stub_.get(), std::move(context), board);
+    return new SessionReactor(board_stub_.get(), std::move(context), worker);
 }

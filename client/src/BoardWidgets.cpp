@@ -47,11 +47,11 @@ void Widget::SetupUI() {
 
     QHBoxLayout* button_layout = new QHBoxLayout();
 
-    QPushButton* update_button_ = new QPushButton("Обновить", this);
+    update_button_ = new QPushButton("Обновить", this);
     update_button_->setMinimumHeight(20);
     button_layout->addWidget(update_button_);
 
-    QPushButton* delete_button_ = new QPushButton("Удалить", this);
+    delete_button_ = new QPushButton("Удалить", this);
     delete_button_->setMinimumHeight(20);
     button_layout->addWidget(delete_button_);
 
@@ -68,6 +68,10 @@ void Widget::UpdateCoords(int new_x, int new_y) {
     setWindowTitle(QString::fromStdString(new_label));
 }
 
+std::pair<int, int> Widget::GetCoords() {
+    return {x_, y_};
+}
+
 void Widget::onUpdateClicled() {
     QString x = x_setup_line_->text();
     QString y = y_setup_line_->text();
@@ -79,7 +83,7 @@ void Widget::onUpdateClicled() {
     int new_x = std::stoi(x.toStdString());
     int new_y = std::stoi(y.toStdString());
 
-    emit requestUpdate(widget_id_, {new_x, new_y});
+    emit requestUpdate({widget_id_, new_x, new_y});
 }
 
 void Widget::onDeleteClicked() {

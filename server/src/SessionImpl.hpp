@@ -58,9 +58,9 @@ class SessionReactor final
     std::atomic<bool> is_writing_;
     std::mutex write_mutex_;
 
-    std::list<std::unique_ptr<contracts::BoardUpdate>> write_queue_;
+    std::list<contracts::BoardUpdate> write_queue_;
     contracts::BoardUpdate request_;
-    std::unique_ptr<contracts::BoardUpdate> msg;
+    contracts::BoardUpdate response_;
 
     void ProcessQueue();
     void Broadcast(const contracts::BoardUpdate &request);

@@ -2,6 +2,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <chrono>
 #include <iostream>
 
 namespace board_module {
@@ -25,6 +26,7 @@ std::optional<std::string> BoardsDataBase::GetBoard(uint64_t board_id) const {
 BoardServiceImpl::BoardServiceImpl(
     std::shared_ptr<auth_module::AuthenticationServiceImpl> auth_impl
 ) {
+    create_rand_64_ = std::mt19937_64(std::chrono::system_clock::now().time_since_epoch().count());
     auth_impl_ = auth_impl;
 }
 
@@ -52,7 +54,7 @@ grpc::Status BoardServiceImpl::FetchUserBoards(
         return grpc::Status::OK;
     }
 
-    std::cout << "fetch request from " << user_id << ", amout of its boards: " << user_owned_boards_[user_id].size() << std::endl;
+    // std::cout << "fetch request from " << user_id << ", amout of its boards: " << user_owned_boards_[user_id].size() << std::endl;
 
     response->set_success(true);
 
@@ -68,7 +70,7 @@ grpc::Status BoardServiceImpl::FetchUserBoards(
         board->set_board_name(std::move(board_name));
     }
 
-    std::cout << "sending of list with size: " << response->boards_size() << std::endl;
+    // std::cout << "sending of list with size: " << response->boards_size() << std::endl;
 
     return grpc::Status::OK;
 }

@@ -10,5 +10,6 @@ class SessionReactorInterface : public grpc::ClientBidiReactor<BoardUpdate, Boar
 
 public:
     virtual void AddUpdate(BoardUpdate request) = 0;
+    virtual void Shutdown() = 0;
     virtual ~SessionReactorInterface() = default;
 };

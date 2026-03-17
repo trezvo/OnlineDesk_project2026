@@ -1,10 +1,11 @@
 #include "SessionReactor.hpp"
 #include <utility>
 #include <memory>
+#include <iostream>
 
-SessionReactor::SessionReactor(BoardService::Stub* stub_, std::unique_ptr<grpc::ClientContext> context, BoardScreen& board)
+SessionReactor::SessionReactor(BoardService::Stub* stub_, std::unique_ptr<grpc::ClientContext> context, BoardWorkerInterface& worker)
     : is_running_(true)
-    , screen_instance_(board)
+    , board_worker_(worker)
     , is_writing_(false) {
         
     stub_->async()->SubscribeBoard(context.get(), this);
@@ -18,12 +19,19 @@ void SessionReactor::AddUpdate(BoardUpdate request) {
         return;
     }
 
+    std::cout << "entered 'AddUpdate'..." << std::endl;
     {
         std::lock_guard<std::mutex> lock(write_queue_mutex_);
-        write_queue_.push(std::move(request));
-    }
 
-    ProcessQueue();
+        if (!is_writing_) {
+            write_buffer_ = std::move(request);
+            StartWrite(&write_buffer_);
+        }
+        else {
+            write_queue_.push(std::move(request));
+        }
+    }
+    std::cout << "'AddUpdate' freed!" << std::endl;
 }
 
 void SessionReactor::ProcessQueue() {
@@ -32,11 +40,13 @@ void SessionReactor::ProcessQueue() {
     }
 
     {
-        std::lock_guard<std::mutex> lock(write_queue_mutex_);
+        std::unique_lock<std::mutex> lock(write_queue_mutex_);
+
         if (write_queue_.empty()) {
             is_writing_ = false;
             return;
         }
+
         write_buffer_ = std::move(write_queue_.front());
         write_queue_.pop();
     }
@@ -49,6 +59,7 @@ void SessionReactor::OnWriteDone(bool ok) {
         return;
     }
 
+    std::cout << "outcome bidi update" << std::endl;
     is_writing_ = false;
 
     if (!ok) {
@@ -69,7 +80,9 @@ void SessionReactor::OnReadDone(bool ok) {
         return;
     }
 
-    screen_instance_.UpdateBoard(read_buffer_);
+    std::cout << "income bidi update" << std::endl;
+
+    board_worker_.addUpdate(std::move(read_buffer_));
     StartRead(&read_buffer_);
 }
 
