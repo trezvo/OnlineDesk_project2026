@@ -11,8 +11,8 @@
 #include <queue>
 #include <set>
 #include <thread>
-#include "BoardServiceImplFwd.hpp"
-#include "BoardWidgets.hpp"
+#include "BoardImpl/BoardServiceImplFwd.hpp"
+#include "BoardWidgets/BoardWidgets.hpp"
 #include "board.grpc.pb.h"
 #include "board.pb.h"
 

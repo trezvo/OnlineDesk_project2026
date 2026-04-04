@@ -4,8 +4,8 @@
 #include <csignal>
 #include <memory>
 #include <iostream>
-#include "AuthenticationImpl.hpp"
-#include "BoardImpl.hpp"
+#include "AuthenticationImpl/AuthenticationImpl.hpp"
+#include "BoardImpl/BoardImpl.hpp"
 
 std::unique_ptr<grpc::Server> g_server;
 

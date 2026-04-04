@@ -9,10 +9,10 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "AuthenticationImpl.hpp"
 #include "BoardServiceImplFwd.hpp"
-#include "BoardWidgets.hpp"
-#include "SessionImpl.hpp"
+#include "AuthenticationImpl/AuthenticationImpl.hpp"
+#include "BoardWidgets/BoardWidgets.hpp"
+#include "SessionImpl/SessionImpl.hpp"
 #include "board.grpc.pb.h"
 #include "board.pb.h"
 
