@@ -22,15 +22,10 @@ void SessionReactor::AddUpdate(BoardUpdate request) {
     std::cout << "entered 'AddUpdate'..." << std::endl;
     {
         std::lock_guard<std::mutex> lock(write_queue_mutex_);
-
-        if (!is_writing_) {
-            write_buffer_ = std::move(request);
-            StartWrite(&write_buffer_);
-        }
-        else {
-            write_queue_.push(std::move(request));
-        }
+        write_queue_.push(std::move(request));
     }
+    ProcessQueue();
+
     std::cout << "'AddUpdate' freed!" << std::endl;
 }
 
@@ -51,11 +46,12 @@ void SessionReactor::ProcessQueue() {
         write_queue_.pop();
     }
 
+    write_buffer_.mutable_update_data()->clear_content();
     StartWrite(&write_buffer_);
 }
 
 void SessionReactor::OnWriteDone(bool ok) {
-    if (!is_running_) {
+    if (!is_running_ or !ok) {
         return;
     }
 

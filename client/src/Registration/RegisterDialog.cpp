@@ -96,7 +96,7 @@ void RegisterDialog::onRegisterClicked() {
         error_label_->show();
         return;
     }
-
+    /*
     if (username.length() < 3) {
         error_label_->setText("Логин должен быть не менее 3 символов");
         error_label_->show();
@@ -108,7 +108,7 @@ void RegisterDialog::onRegisterClicked() {
         error_label_->show();
         return;
     }
-
+    */
     if (password != password_confirm) {
         error_label_->setText("Пароли не совпадают");
         error_label_->show();

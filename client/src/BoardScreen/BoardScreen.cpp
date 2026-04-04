@@ -23,6 +23,8 @@ BoardScreen::BoardScreen(std::shared_ptr<GrpcBoardClient> grpc_client, uint64_t 
     scene_->setBackgroundBrush(QBrush(QColor("#97d2f7")));
 }
 
+BoardScreen::~BoardScreen() = default;
+
 void BoardScreen::SetupUI() {
 
     setWindowTitle(QString::fromStdString("Board № " + std::to_string(board_id_)));
@@ -64,6 +66,8 @@ void BoardScreen::SetupUI() {
 
 Widget* BoardScreen::ProduceWidget(uint64_t widget_id) {
     Widget* new_widget = new Widget(widget_id);
+    connect(new_widget, &Widget::updateSignal, this, &BoardScreen::requestUpdate);
+    connect(new_widget, &Widget::deleteSignal, this, &BoardScreen::requestDelete);
     return new_widget;
 }
 
@@ -71,7 +75,7 @@ void BoardScreen::create_widget() {
     uint64_t widget_id = gen64_();
 
     Widget* new_widget = ProduceWidget(widget_id);
-    new_widget->setPos(200, 150);
+    new_widget->setPosUnnotify({200, 150});
     scene_->addItem(new_widget);
 
     {
@@ -88,9 +92,8 @@ void BoardScreen::create_widget() {
     online_desk::board::WidgetInfo* difference = request.mutable_update_data();
     difference->set_coord_x(x);
     difference->set_coord_y(y);
-    difference->set_content("");
 
-    // worker_->sendSessionUpdate(std::move(request)); TODO
+    worker_->sendSessionUpdate(std::move(request)); //TODO
 }
 
 void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
@@ -103,41 +106,66 @@ void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
     std::cout << "online income widget_id=" << widget_id << std::endl;
     
     const WidgetInfo& info = upd.update_data();
-    {
-        std::lock_guard<std::mutex> lock(widget_edit_mutex_);
+
+    Widget* widget_ptr = nullptr;
         
-        switch (action) {
-            case (ActionType::CREATE): {
-                if (board_widgets_.contains(widget_id)) {
-                    return;
-                }                
-                Widget* new_widget = ProduceWidget(widget_id);
-                // new_widget->UpdateCoords(info.coord_x(), info.coord_y());
-                board_widgets_[widget_id] = new_widget;
-            } break;
+    switch (action) {
+        case (ActionType::CREATE): {
+            std::cout << "create widget, id=" << widget_id << std::endl;
+            widget_ptr = ProduceWidget(widget_id);
 
-            case (ActionType::DELETE): {
-                if (!board_widgets_.contains(widget_id)) {
-                    return;
-                }
-                Widget* widget_ptr_ = board_widgets_[widget_id];
-                board_widgets_.erase(widget_id);
-                widget_ptr_->setParent(nullptr);
-                delete widget_ptr_;
-            } break;
+            { 
+                std::lock_guard<std::mutex> lock(widget_edit_mutex_);
+                board_widgets_[widget_id] = widget_ptr;
+            }
 
-            case (ActionType::UPDATE): {
-                if (!board_widgets_.contains(widget_id)) {
+            widget_ptr->setPosUnnotify({info.coord_x(), info.coord_y()});
+            scene_->addItem(widget_ptr);
+
+        } break;
+
+        case (ActionType::DELETE): {
+            
+            std::lock_guard<std::mutex> lock(widget_edit_mutex_);
+        
+            if (!board_widgets_.contains(widget_id)) {
+                return;
+            }
+            widget_ptr = board_widgets_[widget_id];
+            board_widgets_.erase(widget_id);
+            scene_->removeItem(widget_ptr);
+            delete widget_ptr;
+            
+        } break;
+
+        case (ActionType::UPDATE): {
+            std::cout << "update widget, id=" << widget_id << std::endl;
+
+            bool item_exists = true;
+            {
+                std::lock_guard<std::mutex> lock(widget_edit_mutex_);
+
+                item_exists = board_widgets_.contains(widget_id);
+
+                if (!item_exists) {
                     board_widgets_[widget_id] = ProduceWidget(widget_id);
                 }
                 
-                Widget* new_widget = board_widgets_[widget_id];
-                // new_widget->UpdateCoords(info.coord_x(), info.coord_y());                
-            } break;
-        }
+                widget_ptr = board_widgets_[widget_id];
+            }
+
+            widget_ptr->setPosUnnotify({info.coord_x(), info.coord_y()});
+            
+            if (!item_exists) {
+                scene_->addItem(widget_ptr);
+            }
+        } break;
+        default: {
+        } break;
     }
+
 }
-/*
+
 void BoardScreen::requestUpdate(WidgetUpdate upd) {
 
     {
@@ -147,7 +175,6 @@ void BoardScreen::requestUpdate(WidgetUpdate upd) {
             return;
         }
 
-        board_widgets_[upd.widget_id]->UpdateCoords(upd.new_x, upd.new_y);
     }
 
     online_desk::board::BoardUpdate request;
@@ -155,25 +182,24 @@ void BoardScreen::requestUpdate(WidgetUpdate upd) {
     online_desk::board::WidgetInfo* difference = request.mutable_update_data();
     difference->set_coord_x(upd.new_x);
     difference->set_coord_y(upd.new_y);
-    difference->set_content("");
 
     request.set_user_token(grpc_client_->GetUserToken());
     request.set_action_type(online_desk::board::ActionType::UPDATE);
     request.set_widget_id(upd.widget_id);
-
+    /*
     std::cout << "update request got to end of Board method" << std::endl;
 
     qDebug() << "[MainWindow::handleData] Поток выполнения:" 
-                << QThread::currentThreadId();
+                // << QThread::currentThreadId();
     qDebug() << "[MainWindow::handleData] Главный поток:" 
                 << QCoreApplication::instance()->thread()->currentThreadId();
     qDebug() << "[MainWindow::handleData] Главный поток:" << qMetaTypeId<BoardUpdate>();
-    
+    */
     worker_->sendSessionUpdate(std::move(request));
 
     std::cout << "after emit" <<std::endl;
 }
-*/
+
 
 void BoardScreen::requestDelete(uint64_t widget_id) {
 
@@ -186,7 +212,6 @@ void BoardScreen::requestDelete(uint64_t widget_id) {
 
         Widget* widget_ptr_ = board_widgets_[widget_id];
         board_widgets_.erase(widget_id);
-        widget_ptr_->setParent(nullptr);
         delete widget_ptr_;
     }
 

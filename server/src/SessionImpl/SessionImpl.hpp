@@ -69,7 +69,7 @@ class SessionReactor final
 public:
     explicit SessionReactor(grpc::CallbackServerContext *context, SessionManager& manager);
 
-    void ProcessMessage(const contracts::BoardUpdate &msg);
+    void ProcessMessage(contracts::BoardUpdate msg);
     void OnWriteDone(bool ok) override;
 
     void OnReadDone(bool ok) override;

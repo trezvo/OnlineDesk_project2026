@@ -21,7 +21,6 @@ class SessionReactor : public SessionReactorInterface {
     BoardUpdate write_buffer_;
     
     std::atomic<bool> is_writing_;
-    std::condition_variable writing_cv_;
     std::mutex write_queue_mutex_;
     std::queue<BoardUpdate> write_queue_;
 

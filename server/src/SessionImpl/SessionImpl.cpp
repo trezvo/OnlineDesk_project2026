@@ -120,12 +120,20 @@ void SessionReactor::Broadcast(const contracts::BoardUpdate &request) {
         session_instance_->widgets_storage_[widget_id] = {coord_x, coord_y};
     }
 
+    contracts::BoardUpdate message;
+    message.set_action_type(request.action_type());
+    message.set_widget_id(request.widget_id());
+
+    contracts::WidgetInfo* info = message.mutable_update_data();
+    info->set_coord_x(update_info.coord_x());
+    info->set_coord_y(update_info.coord_y());
+
     for (auto member : session_instance_->session_members_) {
         if (member == this) {
             continue;
         }
 
-        member->ProcessMessage(request);
+        member->ProcessMessage(message);
     }
 }
 
@@ -137,22 +145,14 @@ void SessionReactor::Shutdown() {
     Finish(grpc::Status::OK);
 }
 
-void SessionReactor::ProcessMessage(const contracts::BoardUpdate &msg) {
+void SessionReactor::ProcessMessage(contracts::BoardUpdate msg) {
     if (!is_alive) {
         return;
     }
         
     {
         std::lock_guard<std::mutex> lock(write_mutex_);
-
-        if (is_writing_) {
-            write_queue_.push_back(msg);
-        }
-        else {
-            request_ = msg;
-            StartWrite(&request_);
-        }
-
+        write_queue_.push_back(std::move(msg));
     }
 
     ProcessQueue();
@@ -175,6 +175,7 @@ void SessionReactor::ProcessQueue() {
         write_queue_.pop_front();
     }
 
+    request_.mutable_update_data()->clear_content();
     StartWrite(&request_);
 }
 

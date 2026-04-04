@@ -36,7 +36,7 @@ class BoardScreen : public QMainWindow {
 public slots:
 
     void create_widget();
-    // void requestUpdate(WidgetUpdate request);
+    void requestUpdate(WidgetUpdate request);
     void requestDelete(uint64_t widget_id);
 
     void acceptBoardUpdate(BoardUpdate update);
@@ -48,7 +48,7 @@ signals:
 public:
 
     explicit BoardScreen(std::shared_ptr<GrpcBoardClient> grpc_client, uint64_t board_id, QWidget* parent = nullptr);
-    ~BoardScreen() = default;
+    ~BoardScreen();
 };
 
 Q_DECLARE_METATYPE(online_desk::board::BoardUpdate)

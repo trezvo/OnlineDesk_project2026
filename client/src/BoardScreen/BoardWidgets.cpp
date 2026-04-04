@@ -17,6 +17,12 @@ Widget::Widget(uint64_t widget_id)
     setAcceptHoverEvents(true);
 }
 
+void Widget::setPosUnnotify(const QPoint& newPos) {
+    unnotify_ = true;
+    setPos(newPos);
+    unnotify_ = false;
+}
+
 QPointF Widget::GetCoords() {
     return pos();
 }
