@@ -1,0 +1,29 @@
+#include "BoardWidgets.hpp"
+
+#include <QLabel>
+#include <QFormLayout>
+#include <QPushButton>
+#include <QPoint>
+#include <QGraphicsItem>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+
+Widget::Widget(uint64_t widget_id)
+    : widget_id_(widget_id) {
+    
+    setFlag(QGraphicsItem::ItemIsMovable);
+    setFlag(QGraphicsItem::ItemIsSelectable);
+    setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
+    setAcceptHoverEvents(true);
+}
+
+void Widget::setPosUnnotify(const QPoint& newPos) {
+    unnotify_ = true;
+    setPos(newPos);
+    unnotify_ = false;
+}
+
+QPointF Widget::GetCoords() {
+    return pos();
+}
+

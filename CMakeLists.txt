@@ -7,19 +7,26 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
 find_package(Protobuf REQUIRED)
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(GRPC REQUIRED 
-    grpc++ 
-    grpc
-)
 
-
-
-find_program(GRPC_CPP_PLUGIN grpc_cpp_plugin REQUIRED)
-
-find_library(GRPC_REFLECTION_LIB 
+find_library(GRPC_REFLECTION_LIBRARY 
     NAMES grpc++_reflection
-    PATHS /usr/lib /usr/local/lib /usr/lib/x86_64-linux-gnu
+    PATHS /usr/local/lib
+    REQUIRED
 )
+
+pkg_check_modules(GRPC REQUIRED 
+    grpc++
+    grpc
+    gpr
+)
+
+# message(STATUS "GRPC_LIBRARIES = ${GRPC_LIBRARIES}")
+
+find_program(GRPC_CPP_PLUGIN grpc_cpp_plugin 
+    PATHS /usr/local/bin /usr/bin
+    REQUIRED
+)
+
 
 set(PROTO_FILES 
     ${CMAKE_CURRENT_SOURCE_DIR}/proto/auth.proto
@@ -66,10 +73,16 @@ target_include_directories(proto_generated PUBLIC
 )
 
 target_link_libraries(proto_generated PUBLIC 
-    ${GRPC_REFLECTION_LIB}
-    ${Protobuf_LIBRARIES}
     ${GRPC_LIBRARIES}
+    ${GRPC_REFLECTION_LIBRARY}
+    ${Protobuf_LIBRARIES}
+    pthread
+    dl
+    rt
 )
+
+# message(STATUS "GRPC_LIBRARIES = ${GRPC_LIBRARIES}")
+# message(STATUS "GRPC_LIBRARY_DIRS = ${GRPC_LIBRARY_DIRS}")
 
 add_subdirectory(client)
 add_subdirectory(server)
