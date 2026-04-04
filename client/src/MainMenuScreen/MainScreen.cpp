@@ -1,5 +1,4 @@
-#include "GrpcBoardClient.hpp"
-#include "AppController.hpp"
+#include "AppController/AppController.hpp"
 #include "MainScreen.hpp"
 #include "BoardsButtonList.hpp"
 #include <QMainWindow>

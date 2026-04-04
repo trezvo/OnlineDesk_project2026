@@ -1,10 +1,8 @@
 #include <QApplication>
 #include <QProcessEnvironment>
 #include <memory>
-#include "AuthDialog.hpp"
-#include "RegisterDialog.hpp"
-#include "GrpcBoardClient.hpp"
-#include "AppController.hpp"
+#include "GrpcClient/GrpcBoardClient.hpp"
+#include "AppController/AppController.hpp"
 
 int main(int argc, char *argv[]) {
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();

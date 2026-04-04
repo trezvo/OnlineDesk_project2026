@@ -1,6 +1,6 @@
 #pragma once
-#include "GrpcBoardClient.hpp"
-#include "AppControllerFwd.hpp"
+#include "GrpcClient/GrpcBoardClient.hpp"
+#include "AppController/AppControllerFwd.hpp"
 #include "BoardsButtonList.hpp"
 #include <QMainWindow>
 #include <QHBoxLayout>

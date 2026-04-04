@@ -7,8 +7,7 @@
 #include <grpcpp/grpcpp.h>
 #include "auth.grpc.pb.h"
 #include "board.grpc.pb.h"
-#include "BoardScreenFwd.hpp"
-#include "BoardWorkerInterface.hpp"
+#include "BoardScreen/BoardWorkerInterface.hpp"
 #include "SessionReactor.hpp"
 
 struct LoginMetaData {

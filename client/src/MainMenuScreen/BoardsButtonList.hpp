@@ -1,7 +1,7 @@
 #pragma once
 
-#include "AppControllerFwd.hpp"
-#include "GrpcBoardClientFwd.hpp"
+#include "AppController/AppControllerFwd.hpp"
+#include "GrpcClient/GrpcBoardClientFwd.hpp"
 #include <QVBoxLayout>
 #include <QPushButton>
 #include <string>

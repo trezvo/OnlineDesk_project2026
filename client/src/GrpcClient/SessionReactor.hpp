@@ -1,7 +1,7 @@
 #pragma once
 
+#include "BoardScreen/BoardWorkerInterface.hpp"
 #include "SessionReactorInterface.hpp"
-#include "BoardWorkerInterface.hpp"
 #include <grpcpp/grpcpp.h>
 #include "board.grpc.pb.h"
 #include "board.pb.h"

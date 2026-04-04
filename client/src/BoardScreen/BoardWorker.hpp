@@ -2,9 +2,9 @@
 
 #include "board.grpc.pb.h"
 #include "board.pb.h"
+#include "GrpcClient/GrpcBoardClientFwd.hpp"
+#include "GrpcClient/SessionReactorInterface.hpp"
 #include "BoardWidgets.hpp"
-#include "GrpcBoardClientFwd.hpp"
-#include "SessionReactorInterface.hpp"
 #include "BoardWorkerInterface.hpp"
 #include <QObject>
 #include <memory>

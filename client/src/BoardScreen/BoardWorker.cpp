@@ -1,6 +1,6 @@
 #include "BoardWorker.hpp"
-#include "GrpcBoardClient.hpp"
-#include "SessionReactorInterface.hpp"
+#include "GrpcClient/GrpcBoardClient.hpp"
+#include "GrpcClient/SessionReactorInterface.hpp"
 #include <iostream>
 
 BoardWorker::BoardWorker(std::shared_ptr<GrpcBoardClient> grpc_client, uint64_t board_id) 

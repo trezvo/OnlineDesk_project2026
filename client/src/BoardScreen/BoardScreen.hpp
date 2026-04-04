@@ -2,13 +2,14 @@
 
 #include "board.grpc.pb.h"
 #include "board.pb.h"
-#include "GrpcBoardClient.hpp"
-#include "BoardsButtonList.hpp"
+#include "GrpcClient/SessionReactorInterface.hpp"
+#include "GrpcClient/GrpcBoardClient.hpp"
 #include "BoardWidgets.hpp"
 #include "BoardWorker.hpp"
-#include "SessionReactorInterface.hpp"
 #include <QMainWindow>
 #include <QMetaType>
+#include <QGraphicsScene>
+#include <QGraphicsView>
 #include <memory>
 #include <queue>
 #include <random>
@@ -25,8 +26,9 @@ class BoardScreen : public QMainWindow {
     std::mutex widget_edit_mutex_;
     std::unordered_map<uint64_t, Widget*> board_widgets_;
 
-    QPushButton* create_widget_button_;
     BoardWorker* worker_;
+    QGraphicsScene* scene_;
+    QGraphicsView* scene_view_;
 
     void SetupUI();
     Widget* ProduceWidget(uint64_t widget_id);
@@ -34,7 +36,7 @@ class BoardScreen : public QMainWindow {
 public slots:
 
     void create_widget();
-    void requestUpdate(WidgetUpdate request);
+    // void requestUpdate(WidgetUpdate request);
     void requestDelete(uint64_t widget_id);
 
     void acceptBoardUpdate(BoardUpdate update);

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GrpcBoardClient.hpp"
+#include "GrpcClient/GrpcBoardClient.hpp"
 #include <QDialog>
 #include <QLineEdit>
 #include <QPushButton>

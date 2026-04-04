@@ -1,9 +1,9 @@
 #pragma once
 
-#include "GrpcBoardClient.hpp"
-#include "AuthDialog.hpp"
-#include "MainScreen.hpp"
-#include "BoardScreen.hpp"
+#include "GrpcClient/GrpcBoardClient.hpp"
+#include "Authentication/AuthDialog.hpp"
+#include "MainMenuScreen/MainScreen.hpp"
+#include "BoardScreen/BoardScreen.hpp"
 #include <QDialog>
 #include <QScopedPointer>
 #include <QMainWindow>

@@ -1,8 +1,8 @@
 
-file(GLOB HEADERS "src/*.hpp")
+file(GLOB HEADERS "src/*/*.hpp")
 list(FILTER HEADERS EXCLUDE REGEX ".*_dev\\.hpp$")
 
-file(GLOB SOURCES "src/*.cpp")
+file(GLOB SOURCES "src/*/*.cpp")
 list(FILTER SOURCES EXCLUDE REGEX ".*_dev\\.cpp$")
 
 set(CLIENT_SOURCES

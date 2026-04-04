@@ -1,8 +1,6 @@
 #include "AppController.hpp"
-#include "AuthDialog.hpp"
-#include "RegisterDialog.hpp"
-#include "GrpcBoardClient.hpp"
-#include "BoardsButtonList.hpp"
+#include "Registration/RegisterDialog.hpp"
+#include "MainMenuScreen/BoardsButtonList.hpp"
 
 #include <iostream>
 #include <memory>

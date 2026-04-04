@@ -1,5 +1,5 @@
-#include "GrpcBoardClient.hpp"
-#include "AppController.hpp"
+#include "GrpcClient/GrpcBoardClient.hpp"
+#include "AppController/AppController.hpp"
 #include "BoardsButtonList.hpp"
 #include <QString>
 #include <QPushButton>

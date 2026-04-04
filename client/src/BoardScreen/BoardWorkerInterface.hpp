@@ -1,6 +1,9 @@
 #pragma once
 #include <QObject>
 
+#include "board.grpc.pb.h"
+#include "board.pb.h"
+
 class BoardWorkerInterface : public QObject {
 
     Q_OBJECT

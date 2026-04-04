@@ -1,5 +1,4 @@
 #include "RegisterDialog.hpp"
-#include "GrpcBoardClient.hpp"
 #include <QVBoxLayout>
 #include <QFormLayout>
 #include <QHBoxLayout>

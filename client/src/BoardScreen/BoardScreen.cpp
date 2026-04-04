@@ -1,9 +1,9 @@
-#include "GrpcBoardClient.hpp"
 #include "BoardScreen.hpp"
 #include "board.grpc.pb.h"
 #include "board.pb.h"
 #include <QCoreApplication>
 #include <QPushButton>
+#include <QToolBar>
 #include <QThread>
 #include <memory>
 #include <chrono>
@@ -11,31 +11,40 @@
 
 BoardScreen::BoardScreen(std::shared_ptr<GrpcBoardClient> grpc_client, uint64_t board_id, QWidget* parent)
     : QMainWindow(parent)
+    , scene_(new QGraphicsScene(this))
+    , scene_view_(new QGraphicsView(scene_, this))
     , grpc_client_(grpc_client)
     , board_id_(board_id)
     , gen64_(std::chrono::system_clock::now().time_since_epoch().count()) {
     qRegisterMetaType<online_desk::board::BoardUpdate>("online_desk::board::BoardUpdate");
     SetupUI();
+
+    scene_->setSceneRect(0, 0, 800, 500);
+    scene_->setBackgroundBrush(QBrush(QColor("#97d2f7")));
 }
 
 void BoardScreen::SetupUI() {
 
     setWindowTitle(QString::fromStdString("Board № " + std::to_string(board_id_)));
-    resize(800, 600);
+    resize(900, 600);
     
-    QWidget* centralWidget = new QWidget(this);
-    setCentralWidget(centralWidget);
+    setCentralWidget(scene_view_);
+    
+    scene_view_->setRenderHint(QPainter::Antialiasing);
+    scene_view_->setDragMode(QGraphicsView::RubberBandDrag);
 
-    QPushButton* create_widget_button_ = new QPushButton("Создать виджет", this);
+    QToolBar *tool_bar = addToolBar("Actions");
+    tool_bar->addSeparator();
 
-    centralWidget->setStyleSheet("background-color: #ed9898;");
+    QPushButton* create_widget_button = new QPushButton("Создать виджет", this);
+    tool_bar->addWidget(create_widget_button);
 
     QThread* worker_thread = new QThread(this);
     worker_ = new BoardWorker(grpc_client_, board_id_);
 
     worker_->moveToThread(worker_thread);
 
-    connect(create_widget_button_, &QPushButton::clicked, this, &BoardScreen::create_widget);
+    connect(create_widget_button, &QPushButton::clicked, this, &BoardScreen::create_widget);
 
     connect(worker_thread, &QThread::started, worker_, &BoardWorker::runWorking);
     connect(this, &BoardScreen::sendSessionUpdate, worker_, &BoardWorker::sendSessionUpdate);
@@ -45,6 +54,7 @@ void BoardScreen::SetupUI() {
     connect(worker_, &BoardWorker::printUpdate, this, &BoardScreen::acceptBoardUpdate);
     connect(worker_thread, &QThread::finished, worker_, &QObject::deleteLater);
 
+    scene_view_->show();
     worker_thread->start();
 
     if (!worker_thread->isRunning()) {
@@ -53,10 +63,7 @@ void BoardScreen::SetupUI() {
 }
 
 Widget* BoardScreen::ProduceWidget(uint64_t widget_id) {
-    Widget* new_widget = new Widget(widget_id, this);
-    connect(new_widget, &Widget::requestUpdate, this, &BoardScreen::requestUpdate);
-    connect(new_widget, &Widget::requestDelete, this, &BoardScreen::requestDelete);
-    new_widget->show();
+    Widget* new_widget = new Widget(widget_id);
     return new_widget;
 }
 
@@ -64,6 +71,9 @@ void BoardScreen::create_widget() {
     uint64_t widget_id = gen64_();
 
     Widget* new_widget = ProduceWidget(widget_id);
+    new_widget->setPos(200, 150);
+    scene_->addItem(new_widget);
+
     {
         std::lock_guard<std::mutex> lock(widget_edit_mutex_);
         board_widgets_[widget_id] = new_widget;
@@ -80,7 +90,7 @@ void BoardScreen::create_widget() {
     difference->set_coord_y(y);
     difference->set_content("");
 
-    worker_->sendSessionUpdate(std::move(request));
+    // worker_->sendSessionUpdate(std::move(request)); TODO
 }
 
 void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
@@ -102,7 +112,7 @@ void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
                     return;
                 }                
                 Widget* new_widget = ProduceWidget(widget_id);
-                new_widget->UpdateCoords(info.coord_x(), info.coord_y());
+                // new_widget->UpdateCoords(info.coord_x(), info.coord_y());
                 board_widgets_[widget_id] = new_widget;
             } break;
 
@@ -122,12 +132,12 @@ void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
                 }
                 
                 Widget* new_widget = board_widgets_[widget_id];
-                new_widget->UpdateCoords(info.coord_x(), info.coord_y());                
+                // new_widget->UpdateCoords(info.coord_x(), info.coord_y());                
             } break;
         }
     }
 }
-
+/*
 void BoardScreen::requestUpdate(WidgetUpdate upd) {
 
     {
@@ -163,6 +173,7 @@ void BoardScreen::requestUpdate(WidgetUpdate upd) {
 
     std::cout << "after emit" <<std::endl;
 }
+*/
 
 void BoardScreen::requestDelete(uint64_t widget_id) {
 
