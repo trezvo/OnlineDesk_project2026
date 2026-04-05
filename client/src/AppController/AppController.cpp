@@ -32,7 +32,6 @@ void AppController::onAuthDialogFinished() {
 }
 
 void AppController::showMainScreen() {
-
     main_screen_ = new MainScreen(grpc_client_, *this);
     main_screen_->setAttribute(Qt::WA_DeleteOnClose);
     main_screen_->show();
