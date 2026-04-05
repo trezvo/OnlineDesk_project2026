@@ -1,4 +1,5 @@
 #include "BoardImpl.hpp"
+#include "SessionImpl/SessionReactor.hpp"
 #include <optional>
 #include <string>
 #include <unordered_map>

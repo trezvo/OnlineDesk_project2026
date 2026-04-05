@@ -1,54 +1,9 @@
-#include "SessionImpl.hpp"
-#include <memory>
-#include <mutex>
-#include <set>
-#include <utility>
-#include <iostream>
+#include "SessionReactor.hpp"
+#include "SessionInstance.hpp"
+#include "SessionManager.hpp"
+#include "WidgetsDataBase/WidgetsDB.hpp"
 
 namespace board_module {
-
-namespace contracts = online_desk::board;
-
-SessionInstance* 
-SessionManager::JoinToSession(SessionReactor* member, uint64_t board_id) {
-    std::lock_guard<std::mutex> lock(sessions_table_mutex_);
-
-    if (!sessions_table_.contains(board_id)) {
-        sessions_table_[board_id] = new SessionInstance(*this, board_id);
-    }
-
-    return sessions_table_[board_id]->JoinToSession(member);
-}
-
-void SessionManager::CloseSession(uint64_t board_id) {
-    std::lock_guard<std::mutex> lock(sessions_table_mutex_);
-
-    if (sessions_table_.contains(board_id)) {
-        sessions_table_.erase(board_id);
-    }
-}
-
-SessionInstance::SessionInstance(SessionManager& manager, uint64_t board_id) 
-    : manager_(manager)
-    , board_id_(board_id) {
-}
-
-void SessionInstance::CloseMemberConnection(SessionReactor *member) {
-    session_members_.erase(member);
-
-    if (session_members_.empty()) {
-        manager_.CloseSession(board_id_);
-        delete this;
-    }
-}
-
-SessionInstance* SessionInstance::JoinToSession(SessionReactor* member) {
-    std::lock_guard<std::mutex> lock(board_edit_mutex_);
-
-    session_members_.insert(member);
-
-    return this;
-}
 
 SessionReactor::SessionReactor(grpc::CallbackServerContext* context, SessionManager& manager) 
     : context_(context)
@@ -68,9 +23,11 @@ SessionReactor::SessionReactor(grpc::CallbackServerContext* context, SessionMana
 
         contracts::BoardUpdate response;
 
-        for (const auto& [id, widget] : session_instance_->widgets_storage_) {
+        for (uint64_t widget_id : session_instance_->widgets_storage_) {
+            WidgetsRead widget = manager_.GetWidget(widget_id);
+
             response.set_action_type(online_desk::board::CREATE);
-            response.set_widget_id(id);
+            response.set_widget_id(widget.widget_id);
             response.set_user_token(0);
 
             contracts::WidgetInfo* diff = response.mutable_update_data();
@@ -95,8 +52,34 @@ void SessionReactor::Broadcast(const contracts::BoardUpdate &request) {
     switch (action) {
         case (online_desk::board::EXIT): {
             Shutdown();
+            return;
+        } break;
+        case (online_desk::board::CREATE): {
+            manager_.AddWidget(
+                request.widget_id(),
+                {
+                session_instance_->board_id_,
+                request.update_data().coord_x(), 
+                request.update_data().coord_y()
+                }
+            );
+            session_instance_->widgets_storage_.insert(request.widget_id());
+        } break;
+        case (online_desk::board::UPDATE): {
+            manager_.UpdateWidget(
+                request.widget_id(),
+                {
+                request.update_data().coord_x(),
+                request.update_data().coord_y()
+                }
+            );
+        } break;
+        case (online_desk::board::DELETE): {
+            manager_.DeleteWidget(request.widget_id());
+            session_instance_->widgets_storage_.erase(request.widget_id());
         } break;
         default: {
+            return;
         } break;
     }
 
@@ -105,20 +88,6 @@ void SessionReactor::Broadcast(const contracts::BoardUpdate &request) {
     std::cout << "income update: id=" << widget_id << std::endl;
 
     const online_desk::board::WidgetInfo& update_info = request.update_data();
-
-    if (action == online_desk::board::ActionType::DELETE) {
-        if (!session_instance_->widgets_storage_.contains(widget_id)) {
-            return;
-        }
-        session_instance_->widgets_storage_.erase(widget_id);
-    } 
-    else {
-
-        int coord_x = update_info.coord_x();
-        int coord_y = update_info.coord_y();
-
-        session_instance_->widgets_storage_[widget_id] = {coord_x, coord_y};
-    }
 
     contracts::BoardUpdate message;
     message.set_action_type(request.action_type());
@@ -217,4 +186,4 @@ void SessionReactor::OnDone() {
     delete this;
 }
 
-}  // namespace board_module
+}

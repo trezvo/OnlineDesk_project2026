@@ -11,8 +11,7 @@
 #include <vector>
 #include "BoardServiceImplFwd.hpp"
 #include "AuthenticationImpl/AuthenticationImpl.hpp"
-#include "BoardWidgets/BoardWidgets.hpp"
-#include "SessionImpl/SessionImpl.hpp"
+#include "SessionImpl/SessionManager.hpp"
 #include "board.grpc.pb.h"
 #include "board.pb.h"
 
