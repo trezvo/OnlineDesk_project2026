@@ -35,7 +35,8 @@ class BoardScreen : public QMainWindow {
 
 public slots:
 
-    void create_widget();
+    void createWidget();
+    void createSnapshot();
     void requestUpdate(WidgetUpdate request);
     void requestDelete(uint64_t widget_id);
 

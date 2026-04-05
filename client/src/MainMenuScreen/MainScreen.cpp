@@ -80,7 +80,7 @@ void MainScreen::onJoinPartyClicked() {
         return;
     }
 
-    uint64_t board_id = std::stoi(line_input.toStdString());
+    uint64_t board_id = std::stoull(line_input.toStdString());
     emit onMainScreenFinished(board_id);
 
 }

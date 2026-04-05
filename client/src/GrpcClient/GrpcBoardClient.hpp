@@ -55,6 +55,7 @@ public:
     }
 
 
+    void createBoardSnapshot(uint64_t board_id);
     CreateBoardResult createBoard(const std::string& board_name);
     SessionReactorInterface* connectToBoard(BoardWorkerInterface& worker, uint64_t board_id);
 

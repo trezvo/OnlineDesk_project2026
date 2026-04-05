@@ -41,12 +41,16 @@ void BoardScreen::SetupUI() {
     QPushButton* create_widget_button = new QPushButton("Создать виджет", this);
     tool_bar->addWidget(create_widget_button);
 
+    QPushButton* create_snapshot_button = new QPushButton("Создать снапшот", this);
+    tool_bar->addWidget(create_snapshot_button);
+
     QThread* worker_thread = new QThread(this);
     worker_ = new BoardWorker(grpc_client_, board_id_);
 
     worker_->moveToThread(worker_thread);
 
-    connect(create_widget_button, &QPushButton::clicked, this, &BoardScreen::create_widget);
+    connect(create_widget_button, &QPushButton::clicked, this, &BoardScreen::createWidget);
+    connect(create_snapshot_button, &QPushButton::clicked, this, &BoardScreen::createSnapshot);
 
     connect(worker_thread, &QThread::started, worker_, &BoardWorker::runWorking);
     connect(this, &BoardScreen::sendSessionUpdate, worker_, &BoardWorker::sendSessionUpdate);
@@ -71,7 +75,11 @@ Widget* BoardScreen::ProduceWidget(uint64_t widget_id) {
     return new_widget;
 }
 
-void BoardScreen::create_widget() {
+void BoardScreen::createSnapshot() {
+    grpc_client_->createBoardSnapshot(board_id_);
+}
+
+void BoardScreen::createWidget() {
     uint64_t widget_id = gen64_();
 
     Widget* new_widget = ProduceWidget(widget_id);

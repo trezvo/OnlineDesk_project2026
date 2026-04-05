@@ -63,6 +63,12 @@ public:
         contracts::DeleteBoardResponse *response
     ) override;
 
+    grpc::Status CreateBoardSnapshot(
+        grpc::ServerContext *context,
+        const contracts::CreateSnapshotRequest *request,
+        contracts::CreateSnapshotResponse *response
+    ) override;
+
     grpc::ServerBidiReactor<contracts::BoardUpdate, contracts::BoardUpdate>
         *SubscribeBoard(grpc::CallbackServerContext *context) override;
 };

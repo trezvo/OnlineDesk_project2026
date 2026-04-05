@@ -14,7 +14,7 @@ SessionReactor::SessionReactor(grpc::CallbackServerContext* context, SessionMana
     const auto& metadata = context->client_metadata();
 
     auto board_id_it = metadata.find("custom-board-id");
-    uint64_t board_id = std::stoi(std::string(board_id_it->second.data()));
+    uint64_t board_id = std::stoull(std::string(board_id_it->second.data()));
 
     {
         session_instance_ = manager_.JoinToSession(this, board_id);

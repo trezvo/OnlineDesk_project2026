@@ -83,6 +83,18 @@ std::pair<bool, std::vector<BoardInfoInternal>> GrpcBoardClient::fetchUserBoards
     return {true, boards_vec};
 }
 
+void GrpcBoardClient::createBoardSnapshot(uint64_t board_id) {
+    online_desk::board::CreateSnapshotRequest request;
+    request.set_user_token(login_data_.user_token);
+    request.set_user_id(login_data_.user_id);
+    request.set_board_id(board_id);
+
+    online_desk::board::CreateSnapshotResponse response;
+    grpc::ClientContext context;
+
+    board_stub_->CreateBoardSnapshot(&context, request, &response);
+}
+
 CreateBoardResult GrpcBoardClient::createBoard(const std::string& board_name){
     if (login_data_.user_id.empty() || login_data_.user_token == 0) {
         return {false, "Пользователь не авторизован", 0};

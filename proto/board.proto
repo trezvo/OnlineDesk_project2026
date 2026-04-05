@@ -6,6 +6,7 @@ service BoardService {
     rpc FetchUserBoards(FetchUserBoardsRequest) returns (FetchUserBoardsResponse);
     rpc CreateBoard(CreateBoardRequest) returns (CreateBoardResponse);
     rpc DeleteBoard(DeleteBoardRequest) returns (DeleteBoardResponse);
+    rpc CreateBoardSnapshot(CreateSnapshotRequest) returns (CreateSnapshotResponse);
     rpc SubscribeBoard(stream BoardUpdate) returns (stream BoardUpdate);
 }
 
@@ -47,6 +48,15 @@ message DeleteBoardResponse {
     string message = 2;
 }
 
+message CreateSnapshotRequest {
+    uint64 user_token = 1;
+    uint64 board_id = 2;
+    string user_id = 3;
+}
+
+message CreateSnapshotResponse {
+    bool success = 1;
+}
 
 message WidgetInfo {
     int32 coord_x = 1;
@@ -60,7 +70,7 @@ enum ActionType {
     CREATE = 2;
     UPDATE = 3;
     DELETE = 4;
-    FAIL = 5;
+    FAIL = 6;
 }
 
 message BoardUpdate {

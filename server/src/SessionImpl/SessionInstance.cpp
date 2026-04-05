@@ -2,17 +2,21 @@
 #include "SessionManager.hpp"
 #include <vector>
 #include "WidgetsDataBase/WidgetsDB.hpp"
+#include <iostream>
 
 namespace board_module {
 
 SessionInstance::SessionInstance(SessionManager& manager, uint64_t board_id) 
     : manager_(manager)
     , board_id_(board_id) {
+    std::cout << "request to initiate board id=" << board_id << std::endl;
     std::vector<WidgetsRead> widgets = manager_.GetBoardsWidgets(board_id_);
 
     for (const WidgetsRead& read : widgets) {
         widgets_storage_.insert(read.widget_id);
     }
+
+    std::cout << "created session instance of " << board_id << ", widgets amount=" << widgets.size() << std::endl;
 }
 
 void SessionInstance::CloseMemberConnection(SessionReactor *member) {

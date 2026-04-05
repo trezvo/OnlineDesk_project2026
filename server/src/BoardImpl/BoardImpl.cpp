@@ -116,9 +116,29 @@ grpc::Status BoardServiceImpl::DeleteBoard(
     return grpc::Status::OK;
 }
 
+grpc::Status BoardServiceImpl::CreateBoardSnapshot(
+    grpc::ServerContext *context,
+    const contracts::CreateSnapshotRequest *request,
+    contracts::CreateSnapshotResponse *response
+) {
+    uint64_t board_id = request->board_id();
+    std::string user_id = request->user_id();
+
+    uint64_t new_board_id = session_manager_.MakeBoardSnapshot(board_id);
+    response->set_success(true);
+
+    data_base_.SetBoard(new_board_id, "shapshot of " + std::to_string(board_id));
+    user_owned_boards_[user_id].push_back(new_board_id);
+
+    std::cout << "created snapshot of " << board_id << std::endl;
+
+    return grpc::Status::OK;
+}
+
 grpc::ServerBidiReactor<contracts::BoardUpdate, contracts::BoardUpdate>
     *BoardServiceImpl::SubscribeBoard(grpc::CallbackServerContext *context
     ) {
+        std::cout << "emit for subscribe" << std::endl;
         return new SessionReactor(context, session_manager_);
 }
 
