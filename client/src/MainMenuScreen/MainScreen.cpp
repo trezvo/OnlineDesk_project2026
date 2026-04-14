@@ -37,23 +37,32 @@ void MainScreen::SetupUI() {
     create_board_->setFixedHeight(40);
     layout_->addWidget(create_board_);
 
+    QVBoxLayout* menu_layout_ = new QVBoxLayout();
+    layout_->addLayout(menu_layout_);
+
+    QHBoxLayout* join_layout_ = new QHBoxLayout();
+    menu_layout_->addLayout(join_layout_);
+    
     lobby_id_line_ = new QLineEdit(this);
     lobby_id_line_->setPlaceholderText("id доски");
     lobby_id_line_->setMinimumHeight(20);
-    layout_->addWidget(lobby_id_line_);
+    join_layout_->addWidget(lobby_id_line_);
 
     lobby_join_ = new QPushButton("Присоединиться к сессии: ", this);
     lobby_join_ ->setMinimumHeight(40);
-    layout_->addWidget(lobby_join_);
+    join_layout_->addWidget(lobby_join_);
+
+    QHBoxLayout* rename_layout_ = new QHBoxLayout();
+    menu_layout_->addLayout(rename_layout_);
 
     rename_id_line_ = new QLineEdit(this);
     rename_id_line_->setPlaceholderText("id доски");
     rename_id_line_->setMinimumHeight(20);
-    layout_->addWidget(rename_id_line_);
+    rename_layout_->addWidget(rename_id_line_);
 
     rename_board_ = new QPushButton("Переименовать доску", this);
     rename_board_->setMinimumHeight(40);
-    layout_->addWidget(rename_board_);
+    rename_layout_->addWidget(rename_board_);
 
     connect(create_board_, &QPushButton::clicked, this,  &MainScreen::onCreateBoardClicked);
     connect(this, &MainScreen::onMainScreenFinished, &app_, &AppController::onMainScreenFinished);
