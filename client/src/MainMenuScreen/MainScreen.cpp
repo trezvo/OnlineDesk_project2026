@@ -14,8 +14,8 @@
 
 MainScreen::MainScreen(std::shared_ptr<GrpcBoardClient> grpc_client, AppController& app, QWidget* parent) 
     : QMainWindow(parent) 
-    , grpc_client_(grpc_client)
-    , app_(app) {
+      , grpc_client_(grpc_client)
+      , app_(app) {
     SetupUI();
 }
 
@@ -46,9 +46,19 @@ void MainScreen::SetupUI() {
     lobby_join_ ->setMinimumHeight(40);
     layout_->addWidget(lobby_join_);
 
+    rename_id_line_ = new QLineEdit(this);
+    rename_id_line_->setPlaceholderText("id доски");
+    rename_id_line_->setMinimumHeight(20);
+    layout_->addWidget(rename_id_line_);
+
+    rename_board_ = new QPushButton("Переименовать доску", this);
+    rename_board_->setMinimumHeight(40);
+    layout_->addWidget(rename_board_);
+
     connect(create_board_, &QPushButton::clicked, this,  &MainScreen::onCreateBoardClicked);
     connect(this, &MainScreen::onMainScreenFinished, &app_, &AppController::onMainScreenFinished);
     connect(lobby_join_, &QPushButton::clicked, this, &MainScreen::onJoinPartyClicked);
+    connect(rename_board_, &QPushButton::clicked, this, &MainScreen::onRenameBoardClicked);
 
     resize(800, 600);
 }
@@ -61,14 +71,14 @@ void MainScreen::onCreateBoardClicked(){
         return;
     }
     auto result = grpc_client_->createBoard(board_name.toStdString());
-    
+
     if (result.success) {
         QMessageBox::information(this, "Успех", "Доска создана!");
         boards_list_->UpdateUI();
     }
     else {
-        QMessageBox::warning(this, "Ошибка", 
-            QString::fromStdString(result.message));
+        QMessageBox::warning(this, "Ошибка",
+                             QString::fromStdString(result.message));
     }
 }
 
@@ -83,4 +93,41 @@ void MainScreen::onJoinPartyClicked() {
     uint64_t board_id = std::stoull(line_input.toStdString());
     emit onMainScreenFinished(board_id);
 
+}
+
+void MainScreen::onRenameBoardClicked() {
+    QString line_input = rename_id_line_->text();
+
+    if (line_input.isEmpty()) {
+        QMessageBox::warning(this, "Ошибка", "Введите id доски");
+        return;
+    }
+
+    uint64_t board_id = 0;
+    try {
+        board_id = std::stoull(line_input.toStdString());
+    } catch (const std::exception&) {
+        QMessageBox::warning(this, "Ошибка", "Некорректный id доски");
+        return;
+    }
+
+    bool ok;
+    QString new_name = QInputDialog::getText(
+        this, "Переименование доски", "Введите новое название доски",
+        QLineEdit::Normal, "", &ok);
+
+    if (!ok || new_name.isEmpty()) {
+        return;
+    }
+
+    auto result = grpc_client_->renameBoard(board_id, new_name.toStdString());
+
+    if (result.success) {
+        QMessageBox::information(this, "Успех", "Доска переименована!");
+        rename_id_line_->clear();
+        boards_list_->UpdateUI();
+    } else {
+        QMessageBox::warning(this, "Ошибка",
+                             QString::fromStdString(result.message));
+    }
 }

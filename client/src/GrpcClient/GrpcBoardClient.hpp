@@ -33,6 +33,11 @@ struct CreateBoardResult{
     uint64_t board_id = 0;
 };
 
+struct RenameBoardResult {
+    bool success = false;
+    std::string message = "";
+};
+
 
 using namespace online_desk::auth;
 using namespace online_desk::board;
@@ -41,12 +46,12 @@ class GrpcBoardClient {
 public:
 
     explicit GrpcBoardClient(const std::string& server_address);
-    
+
     void login(const std::string& username, const std::string& password);
     RegisterResult registerUser
-    (const std::string& username, const std::string& password);
+        (const std::string& username, const std::string& password);
     std::pair<bool, std::vector<BoardInfoInternal>> fetchUserBoards();
-    
+
     const LoginMetaData& get_login_data() const {
         return login_data_;
     }
@@ -57,10 +62,11 @@ public:
 
     void createBoardSnapshot(uint64_t board_id);
     CreateBoardResult createBoard(const std::string& board_name);
+    RenameBoardResult renameBoard(uint64_t board_id, const std::string& new_board_name);
     SessionReactorInterface* connectToBoard(BoardWorkerInterface& worker, uint64_t board_id);
 
 private:
-    
+
     std::unique_ptr<online_desk::auth::AuthenticationService::Stub> auth_stub_;
     std::unique_ptr<online_desk::board::BoardService::Stub> board_stub_;
 

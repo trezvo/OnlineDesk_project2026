@@ -6,6 +6,7 @@ service BoardService {
     rpc FetchUserBoards(FetchUserBoardsRequest) returns (FetchUserBoardsResponse);
     rpc CreateBoard(CreateBoardRequest) returns (CreateBoardResponse);
     rpc DeleteBoard(DeleteBoardRequest) returns (DeleteBoardResponse);
+    rpc RenameBoard(RenameBoardRequest) returns (RenameBoardResponse);
     rpc CreateBoardSnapshot(CreateSnapshotRequest) returns (CreateSnapshotResponse);
     rpc SubscribeBoard(stream BoardUpdate) returns (stream BoardUpdate);
 }
@@ -44,6 +45,18 @@ message DeleteBoardRequest {
 }
 
 message DeleteBoardResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+message RenameBoardRequest {
+    string user_id = 1;
+    uint64 user_token = 2;
+    uint64 board_id = 3;
+    string new_board_name = 4;
+}
+
+message RenameBoardResponse {
     bool success = 1;
     string message = 2;
 }
