@@ -19,11 +19,13 @@ class MainScreen : public QMainWindow {
     QHBoxLayout* layout_;
     QLineEdit* lobby_id_line_;
     QPushButton* lobby_join_;
+    QLineEdit* rename_id_line_;
+    QPushButton* rename_board_;
 
-// public slots:
-//     void onBoardCreateClicked();
-//     void onBoardJoinClicked();
-//TODO
+    // public slots:
+    //     void onBoardCreateClicked();
+    //     void onBoardJoinClicked();
+    //TODO
 
 public:
 
@@ -37,5 +39,6 @@ private slots:
 
     void onCreateBoardClicked();
     void onJoinPartyClicked();
+    void onRenameBoardClicked();
 
 };
