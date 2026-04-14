@@ -1,6 +1,5 @@
 #include "BoardImpl.hpp"
 #include "SessionImpl/SessionReactor.hpp"
-#include <algorithm>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -17,24 +16,12 @@ void BoardsDataBase::SetBoard(uint64_t board_id, std::string board_name) {
 
 std::optional<std::string> BoardsDataBase::GetBoard(uint64_t board_id) const {
     std::lock_guard<std::mutex> lock(db_edit_mutex_);
-
+    
     if (!boards_.contains(board_id)) {
         return std::nullopt;
     }
 
     return std::optional<std::string>(boards_.at(board_id));
-}
-
-bool BoardsDataBase::RenameBoard(uint64_t board_id, std::string new_board_name) {
-    std::lock_guard<std::mutex> lock(db_edit_mutex_);
-
-    auto it = boards_.find(board_id);
-    if (it == boards_.end()) {
-        return false;
-    }
-
-    it->second = std::move(new_board_name);
-    return true;
 }
 
 BoardServiceImpl::BoardServiceImpl(
@@ -110,7 +97,7 @@ grpc::Status BoardServiceImpl::CreateBoard(
         return grpc::Status::OK;
     }
 
-    uint64_t new_board_id = create_rand_64_() % 10'000; // mod 1e5 so far
+    uint64_t new_board_id = create_rand_64_() % 10'000; // mod 1e5 so far 
     data_base_.SetBoard(new_board_id, board_name);
     user_owned_boards_[user_id].push_back(new_board_id);
 
@@ -126,46 +113,6 @@ grpc::Status BoardServiceImpl::DeleteBoard(
     const contracts::DeleteBoardRequest *request,
     contracts::DeleteBoardResponse *response
 ) {
-    return grpc::Status::OK;
-}
-
-grpc::Status BoardServiceImpl::RenameBoard(
-    grpc::ServerContext *context,
-    const contracts::RenameBoardRequest *request,
-    contracts::RenameBoardResponse *response
-) {
-    const std::string &user_id = request->user_id();
-    uint64_t user_token = request->user_token();
-    uint64_t board_id = request->board_id();
-    std::string new_board_name = request->new_board_name();
-
-    if (!auth_impl_->ValidateUserToken(user_id, user_token)) {
-        response->set_success(false);
-        response->set_message("К сожалению, ваш идентификатор устарел.");
-        return grpc::Status::OK;
-    }
-
-    if (new_board_name.empty()) {
-        response->set_success(false);
-        response->set_message("Название доски не может быть пустым.");
-        return grpc::Status::OK;
-    }
-
-    const auto &owned = user_owned_boards_[user_id];
-    if (std::find(owned.begin(), owned.end(), board_id) == owned.end()) {
-        response->set_success(false);
-        response->set_message("У вас нет прав на переименование.");
-        return grpc::Status::OK;
-    }
-
-    if (!data_base_.RenameBoard(board_id, std::move(new_board_name))) {
-        response->set_success(false);
-        response->set_message("Доска не найдена");
-        return grpc::Status::OK;
-    }
-
-    response->set_success(true);
-    response->set_message("Доска переименована");
     return grpc::Status::OK;
 }
 
@@ -191,8 +138,8 @@ grpc::Status BoardServiceImpl::CreateBoardSnapshot(
 grpc::ServerBidiReactor<contracts::BoardUpdate, contracts::BoardUpdate>
     *BoardServiceImpl::SubscribeBoard(grpc::CallbackServerContext *context
     ) {
-    std::cout << "emit for subscribe" << std::endl;
-    return new SessionReactor(context, session_manager_);
+        std::cout << "emit for subscribe" << std::endl;
+        return new SessionReactor(context, session_manager_);
 }
 
 }  // namespace board_module

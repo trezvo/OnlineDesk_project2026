@@ -27,7 +27,6 @@ class BoardsDataBase {
 public:
     void SetBoard(uint64_t board_id, std::string board_name);
     std::optional<std::string> GetBoard(uint64_t board_id) const;
-    bool RenameBoard(uint64_t board_id, std::string new_board_name);
 
 };
 
@@ -62,12 +61,6 @@ public:
         grpc::ServerContext *context,
         const contracts::DeleteBoardRequest *request,
         contracts::DeleteBoardResponse *response
-    ) override;
-
-    grpc::Status RenameBoard(
-        grpc::ServerContext *context,
-        const contracts::RenameBoardRequest *request,
-        contracts::RenameBoardResponse *response
     ) override;
 
     grpc::Status CreateBoardSnapshot(
