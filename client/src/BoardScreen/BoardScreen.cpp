@@ -5,6 +5,7 @@
 #include <QPushButton>
 #include <QToolBar>
 #include <QThread>
+#include <QMessageBox>
 #include <memory>
 #include <chrono>
 #include <iostream>
@@ -131,6 +132,10 @@ void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
             scene_->addItem(widget_ptr);
 
         } break;
+        case (ActionType::BOARD_DELETED): {
+            QMetaObject::invokeMethod(this, "onBoardDeleted", Qt::QueuedConnection);
+            break;
+        }
 
         case (ActionType::DELETE): {
             
@@ -230,3 +235,27 @@ void BoardScreen::requestDelete(uint64_t widget_id) {
 
     worker_->sendSessionUpdate(std::move(request));
 }
+
+void BoardScreen::onBoardDeleted() {
+    QMessageBox::information(this, "Доска удалена", "Эта доска была удалена владельцем");
+    
+    emit boardClosed();
+    
+    if (worker_) {
+        worker_->Shutdown();
+        worker_->thread()->quit();
+        worker_->thread()->wait();
+    }
+    
+    this->close();
+}
+
+void BoardScreen::shutdownWorker() {
+    if (worker_) {
+        worker_->Shutdown();
+        worker_->thread()->quit();
+        worker_->thread()->wait();
+    }
+}
+
+

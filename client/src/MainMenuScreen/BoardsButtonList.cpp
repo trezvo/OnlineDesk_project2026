@@ -4,6 +4,9 @@
 #include <QString>
 #include <QPushButton>
 #include <QVBoxLayout>
+#include <QContextMenuEvent>
+#include <QMenu>
+#include <QAction>
 #include <memory>
 #include <string>
 #include <utility>
@@ -12,11 +15,22 @@
 
 BoardButton::BoardButton(const QString& board_name, uint64_t board_id, QWidget* parent)
     : QPushButton(board_name, parent)
-    , board_id_(std::move(board_id)) {
+    , board_id_(board_id) {
 }
 
 void BoardButton::mouseDoubleClickEvent(QMouseEvent* event) {
     emit onDoubleClickedBoardButton(board_id_);
+}
+
+void BoardButton::contextMenuEvent(QContextMenuEvent* event) {
+    QMenu menu(this);
+    QAction* deleteAction = menu.addAction("Удалить доску");
+    
+    connect(deleteAction, &QAction::triggered, [this]() {
+        emit deleteRequested(board_id_);
+    });
+    
+    menu.exec(event->globalPos());
 }
 
 BoardsButtonList::BoardsButtonList(std::shared_ptr<GrpcBoardClient> grpc_client, AppController& app, QWidget* parent)
@@ -71,6 +85,9 @@ void BoardsButtonList::UpdateUI() {
         connect(new_button, &BoardButton::onDoubleClickedBoardButton, 
                 &app_, &AppController::onMainScreenFinished);
         
+        connect(new_button, &BoardButton::deleteRequested, 
+                this, &BoardsButtonList::onDeleteButtonClicked);
+        
         layout_->addWidget(new_button);
         buttons_.append(new_button);
     }
@@ -78,4 +95,8 @@ void BoardsButtonList::UpdateUI() {
     std::cout << "fetched boards list of size: " << owned_boards.second.size() << std::endl;
     layout_->addStretch();
     this->show();
+}
+
+void BoardsButtonList::onDeleteButtonClicked(uint64_t board_id) {
+    emit deleteBoardRequested(board_id);
 }

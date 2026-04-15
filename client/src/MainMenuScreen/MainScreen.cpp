@@ -5,6 +5,7 @@
 #include <QLabel>
 #include <QString>
 #include <QLineEdit>
+#include <QTimer>
 #include <QPushButton>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -32,6 +33,9 @@ void MainScreen::SetupUI() {
 
     boards_list_ = new BoardsButtonList(grpc_client_, app_, this);
     layout_->addWidget(boards_list_);
+
+    connect(boards_list_, &BoardsButtonList::deleteBoardRequested, 
+            this, &MainScreen::onDeleteBoardFromList);
 
     QPushButton* create_board_ = new QPushButton("Создать доску", this);
     create_board_->setFixedHeight(40);
@@ -64,10 +68,34 @@ void MainScreen::SetupUI() {
     rename_board_->setMinimumHeight(40);
     rename_layout_->addWidget(rename_board_);
 
+    QHBoxLayout* delete_layout = new QHBoxLayout();
+    menu_layout_->addLayout(delete_layout);
+
+    delete_id_line_ = new QLineEdit(this);
+    delete_id_line_->setPlaceholderText("id доски для удаления");
+    delete_id_line_->setMinimumHeight(20);
+    delete_layout->addWidget(delete_id_line_);
+
+    delete_board_ = new QPushButton("Удалить доску", this);
+    delete_board_->setMinimumHeight(40);
+    delete_board_->setStyleSheet(
+        "QPushButton {"
+        "  background-color: #FF3B30;"
+        "  color: white;"
+        "  border-radius: 8px;"
+        "  font-weight: bold;"
+        "}"
+        "QPushButton:hover {"
+        "  background-color: #D70015;"
+        "}"
+    );
+    delete_layout->addWidget(delete_board_);
+
     connect(create_board_, &QPushButton::clicked, this,  &MainScreen::onCreateBoardClicked);
     connect(this, &MainScreen::onMainScreenFinished, &app_, &AppController::onMainScreenFinished);
     connect(lobby_join_, &QPushButton::clicked, this, &MainScreen::onJoinPartyClicked);
     connect(rename_board_, &QPushButton::clicked, this, &MainScreen::onRenameBoardClicked);
+    connect(delete_board_, &QPushButton::clicked, this, &MainScreen::onDeleteBoardClicked);
 
     resize(800, 600);
 }
@@ -135,6 +163,71 @@ void MainScreen::onRenameBoardClicked() {
         QMessageBox::information(this, "Успех", "Доска переименована!");
         rename_id_line_->clear();
         boards_list_->UpdateUI();
+    } else {
+        QMessageBox::warning(this, "Ошибка",
+                             QString::fromStdString(result.message));
+    }
+}
+
+void MainScreen::onDeleteBoardClicked() {
+    QString line_input = delete_id_line_->text();
+
+    if (line_input.isEmpty()) {
+        QMessageBox::warning(this, "Ошибка", "Введите id доски для удаления");
+        return;
+    }
+
+    uint64_t board_id = 0;
+    try {
+        board_id = std::stoull(line_input.toStdString());
+    } catch (const std::exception&) {
+        QMessageBox::warning(this, "Ошибка", "Некорректный id доски");
+        return;
+    }
+
+    QMessageBox::StandardButton reply = QMessageBox::question(
+        this, 
+        "Подтверждение удаления", 
+        QString("Вы уверены, что хотите удалить доску %1?\nЭто действие необратимо!").arg(board_id),
+        QMessageBox::Yes | QMessageBox::No
+    );
+
+    if (reply != QMessageBox::Yes) {
+        return;
+    }
+
+    auto result = grpc_client_->deleteBoard(board_id);
+    if (result.success) {
+        QMessageBox::information(this, "Успех", "Доска успешно удалена!");
+        delete_id_line_->clear();
+        QTimer::singleShot(0, this, [this]() {
+            boards_list_->UpdateUI();
+        });
+    } else {
+        QMessageBox::warning(this, "Ошибка",
+                             QString::fromStdString(result.message));
+    }
+}
+
+void MainScreen::onDeleteBoardFromList(uint64_t board_id) {
+    QMessageBox::StandardButton reply = QMessageBox::question(
+        this, 
+        "Подтверждение удаления", 
+        QString("Вы уверены, что хотите удалить доску %1?\nЭто действие необратимо!").arg(board_id),
+        QMessageBox::Yes | QMessageBox::No
+    );
+
+    if (reply != QMessageBox::Yes) {
+        return;
+    }
+
+    auto result = grpc_client_->deleteBoard(board_id);
+
+    if (result.success) {
+        QMessageBox::information(this, "Успех", "Доска успешно удалена!");
+        QTimer::singleShot(0, this, [this]() {
+            boards_list_->UpdateUI();
+        });
     } else {
         QMessageBox::warning(this, "Ошибка",
                              QString::fromStdString(result.message));

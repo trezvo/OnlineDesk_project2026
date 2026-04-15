@@ -31,7 +31,9 @@ public:
     void AddWidget(uint64_t widget_id, WidgetsPost body);
     void UpdateWidget(uint64_t widget_id, WidgetsUpdate body);
     void DeleteWidget(uint64_t widget_id);
+    void DeleteBoardWidgets(uint64_t board_id);
     void CloseSession(uint64_t board_id);
+    void BroadcastToSession(uint64_t board_id, const contracts::BoardUpdate& message);
     SessionInstance* JoinToSession(SessionReactor *member, uint64_t board_id);
 };
 

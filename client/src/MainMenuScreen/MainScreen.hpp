@@ -21,6 +21,8 @@ class MainScreen : public QMainWindow {
     QPushButton* lobby_join_;
     QLineEdit* rename_id_line_;
     QPushButton* rename_board_;
+    QLineEdit* delete_id_line_;
+    QPushButton* delete_board_;
 
     // public slots:
     //     void onBoardCreateClicked();
@@ -34,11 +36,14 @@ public:
 
 signals:
     void onMainScreenFinished(uint64_t board_id);
+    void boardDeleted(uint64_t board_id);
 
 private slots:
 
     void onCreateBoardClicked();
     void onJoinPartyClicked();
     void onRenameBoardClicked();
+    void onDeleteBoardClicked();
+    void onDeleteBoardFromList(uint64_t board_id);
 
 };

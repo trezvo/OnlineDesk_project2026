@@ -38,6 +38,11 @@ struct RenameBoardResult {
     std::string message = "";
 };
 
+struct DeleteBoardResult {
+    bool success = false;
+    std::string message = "";
+};
+
 
 using namespace online_desk::auth;
 using namespace online_desk::board;
@@ -64,6 +69,7 @@ public:
     CreateBoardResult createBoard(const std::string& board_name);
     RenameBoardResult renameBoard(uint64_t board_id, const std::string& new_board_name);
     SessionReactorInterface* connectToBoard(BoardWorkerInterface& worker, uint64_t board_id);
+    DeleteBoardResult deleteBoard(uint64_t board_id);
 
 private:
 
