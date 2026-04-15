@@ -15,9 +15,11 @@ class BoardButton : public QPushButton {
 
 signals:
     void onDoubleClickedBoardButton(uint64_t board_id);
+    void deleteRequested(uint64_t board_id);
 
 protected:
     void mouseDoubleClickEvent(QMouseEvent *event) override;
+    void contextMenuEvent(QContextMenuEvent *event) override;
 
 public:
     explicit BoardButton(const QString& board_name, uint64_t board_id, QWidget* parent);
@@ -37,10 +39,17 @@ class BoardsButtonList : public QWidget {
 
     void clear();
 
+private slots:
+
+    void onDeleteButtonClicked(uint64_t board_id);
+
+signals:
+
+    void deleteBoardRequested(uint64_t board_id);
+
 public:
 
     explicit BoardsButtonList(std::shared_ptr<GrpcBoardClient> grpc_client, AppController& app, QWidget* parent = nullptr);
     ~BoardsButtonList() = default;
     void UpdateUI();
-
 };

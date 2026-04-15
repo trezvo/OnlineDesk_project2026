@@ -11,7 +11,7 @@ int main(int argc, char *argv[]) {
     }
     QApplication app(argc, argv);
     
-    auto client = std::make_shared<GrpcBoardClient>("localhost:50051");
+    auto client = std::make_shared<GrpcBoardClient>("127.0.0.1:50051");
     
     AppController controller(client);
     controller.run();

@@ -110,7 +110,6 @@ void SessionReactor::Shutdown() {
     if (!is_alive.exchange(false)) {
         return;
     }
-
     Finish(grpc::Status::OK);
 }
 
@@ -184,6 +183,16 @@ void SessionReactor::OnDone() {
     }
 
     delete this;
+}
+
+void SessionReactor::BroadcastBoardDeleted() {
+    contracts::BoardUpdate message;
+    message.set_action_type(online_desk::board::BOARD_DELETED);
+    message.set_widget_id(0);
+    
+    for (auto member : session_instance_->session_members_) {
+        member->ProcessMessage(message);
+    }
 }
 
 }

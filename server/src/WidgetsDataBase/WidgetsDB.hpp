@@ -41,5 +41,6 @@ public:
     WidgetsRead Get(uint64_t widget_id);
     std::vector<WidgetsRead> SelectFromBoard(uint64_t board_id);
     void Delete(uint64_t widget_id);
-    
+    void DeleteByBoardId(uint64_t board_id);
+
 };

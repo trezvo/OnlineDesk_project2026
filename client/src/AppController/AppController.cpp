@@ -32,6 +32,11 @@ void AppController::onAuthDialogFinished() {
 }
 
 void AppController::showMainScreen() {
+    if (main_screen_) {
+        main_screen_->close();
+        main_screen_ = nullptr;
+    }
+    
     main_screen_ = new MainScreen(grpc_client_, *this);
     main_screen_->setAttribute(Qt::WA_DeleteOnClose);
     main_screen_->show();
@@ -45,7 +50,21 @@ void AppController::onMainScreenFinished(uint64_t board_id) {
 void AppController::showBoardScreen(uint64_t board_id) {
     board_screen_ = new BoardScreen(grpc_client_, board_id);
     board_screen_->setAttribute(Qt::WA_DeleteOnClose);
+    connect(board_screen_, &BoardScreen::boardClosed, this, &AppController::onBoardScreenClosed);
     board_screen_->show();
+}
+
+void AppController::onBoardDeleted(uint64_t board_id) {
+    if (board_screen_ && board_screen_->getBoardId() == board_id) {
+        board_screen_->close();
+        board_screen_ = nullptr;
+        showMainScreen();
+    }
+}
+
+void AppController::onBoardScreenClosed() {
+    board_screen_ = nullptr;
+    showMainScreen();
 }
 
 void AppController::run() {

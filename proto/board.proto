@@ -40,8 +40,9 @@ message CreateBoardResponse {
 }
 
 message DeleteBoardRequest {
-    uint64 user_token = 1;
-    uint64 board_id = 2;
+    string user_id = 1;
+    uint64 user_token = 2;
+    uint64 board_id = 3;
 }
 
 message DeleteBoardResponse {
@@ -84,6 +85,7 @@ enum ActionType {
     UPDATE = 3;
     DELETE = 4;
     FAIL = 6;
+    BOARD_DELETED = 7;
 }
 
 message BoardUpdate {

@@ -33,6 +33,9 @@ class BoardScreen : public QMainWindow {
     void SetupUI();
     Widget* ProduceWidget(uint64_t widget_id);
 
+private slots:
+    void onBoardDeleted();
+
 public slots:
 
     void createWidget();
@@ -45,11 +48,14 @@ public slots:
 signals:
 
     void sendSessionUpdate(online_desk::board::BoardUpdate update);
+    void boardClosed();
 
 public:
 
     explicit BoardScreen(std::shared_ptr<GrpcBoardClient> grpc_client, uint64_t board_id, QWidget* parent = nullptr);
     ~BoardScreen();
+    uint64_t getBoardId() const { return board_id_; }
+    void shutdownWorker();
 };
 
 Q_DECLARE_METATYPE(online_desk::board::BoardUpdate)

@@ -53,8 +53,10 @@ void BoardWorker::Shutdown() {
     if (!is_running_.exchange(false)) {
         return;
     }
-
-    stream_->Shutdown();
+    income_update_cv_.notify_all();
+    if (stream_) {
+        stream_->Shutdown();
+    }
 }
 
 void BoardWorker::addUpdate(online_desk::board::BoardUpdate update) {

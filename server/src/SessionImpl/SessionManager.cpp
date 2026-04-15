@@ -58,4 +58,15 @@ void SessionManager::DeleteWidget(uint64_t widget_id) {
     widgets_db_.Delete(widget_id);   
 }
 
+void SessionManager::DeleteBoardWidgets(uint64_t board_id) {
+    widgets_db_.DeleteByBoardId(board_id);
+}
+
+void SessionManager::BroadcastToSession(uint64_t board_id, const contracts::BoardUpdate& message) {
+    std::lock_guard<std::mutex> lock(sessions_table_mutex_);
+    if (sessions_table_.contains(board_id)) {
+        sessions_table_[board_id]->BroadcastToAll(message);
+    }
+}
+
 }  // namespace board_module

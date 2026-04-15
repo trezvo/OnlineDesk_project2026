@@ -53,3 +53,19 @@ std::vector<WidgetsRead> WidgetDataBase::SelectFromBoard(uint64_t board_id) {
 
     return response;
 }
+
+void WidgetDataBase::DeleteByBoardId(uint64_t board_id) {
+    std::lock_guard<std::mutex> lock(talbe_mutex_);
+    
+    std::vector<uint64_t> widgets_to_delete;
+    
+    for (const auto& [widget_id, widget] : widgets_talbe_) {
+        if (widget.board_id == board_id) {
+            widgets_to_delete.push_back(widget_id);
+        }
+    }
+    
+    for (uint64_t widget_id : widgets_to_delete) {
+        widgets_talbe_.erase(widget_id);
+    }
+}

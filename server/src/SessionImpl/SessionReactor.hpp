@@ -42,6 +42,8 @@ public:
 
     void OnDone() override;
     void OnCancel() override;
+    
+    void BroadcastBoardDeleted();
 };
 
 }

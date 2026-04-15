@@ -141,6 +141,28 @@ RenameBoardResult GrpcBoardClient::renameBoard(uint64_t board_id, const std::str
     return {false, std::move(error_msg)};
 }
 
+DeleteBoardResult GrpcBoardClient::deleteBoard(uint64_t board_id) {
+    if (login_data_.user_id.empty() || login_data_.user_token == 0) {
+        return {false, "Пользователь не авторизован"};
+    }
+
+    online_desk::board::DeleteBoardRequest request;
+    request.set_user_id(login_data_.user_id);
+    request.set_user_token(login_data_.user_token);
+    request.set_board_id(board_id);
+
+    online_desk::board::DeleteBoardResponse response;
+    grpc::ClientContext context;
+    grpc::Status status = board_stub_->DeleteBoard(&context, request, &response);
+
+    if (status.ok() && response.success()) {
+        return {true, response.message()};
+    }
+
+    std::string error_msg = status.ok() ? response.message() : status.error_message();
+    return {false, std::move(error_msg)};
+}
+
 SessionReactorInterface* GrpcBoardClient::connectToBoard(BoardWorkerInterface& worker, uint64_t board_id) {
 
     auto context = std::make_unique<grpc::ClientContext>();

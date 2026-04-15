@@ -1,5 +1,6 @@
 #include "SessionInstance.hpp"
 #include "SessionManager.hpp"
+#include "SessionReactor.hpp"
 #include <vector>
 #include "WidgetsDataBase/WidgetsDB.hpp"
 #include <iostream>
@@ -30,10 +31,15 @@ void SessionInstance::CloseMemberConnection(SessionReactor *member) {
 
 SessionInstance* SessionInstance::JoinToSession(SessionReactor* member) {
     std::lock_guard<std::mutex> lock(board_edit_mutex_);
-
     session_members_.insert(member);
-
     return this;
+}
+
+void SessionInstance::BroadcastToAll(const contracts::BoardUpdate& message) {
+    std::lock_guard<std::mutex> lock(board_edit_mutex_);
+    for (auto member : session_members_) {
+        member->ProcessMessage(message);
+    }
 }
 
 }

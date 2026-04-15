@@ -37,6 +37,18 @@ bool BoardsDataBase::RenameBoard(uint64_t board_id, std::string new_board_name) 
     return true;
 }
 
+bool BoardsDataBase::DeleteBoard(uint64_t board_id) {
+    std::lock_guard<std::mutex> lock(db_edit_mutex_);
+    
+    auto it = boards_.find(board_id);
+    if (it == boards_.end()) {
+        return false;
+    }
+    
+    boards_.erase(it);
+    return true;
+}
+
 BoardServiceImpl::BoardServiceImpl(
     std::shared_ptr<auth_module::AuthenticationServiceImpl> auth_impl
 ) {
@@ -126,6 +138,43 @@ grpc::Status BoardServiceImpl::DeleteBoard(
     const contracts::DeleteBoardRequest *request,
     contracts::DeleteBoardResponse *response
 ) {
+    if (!auth_impl_->ValidateUserToken(request->user_id(), request->user_token())) {
+        response->set_success(false);
+        response->set_message("К сожалению, Ваш идентификатор устарел.");
+        return grpc::Status::OK;
+    }
+
+    uint64_t board_id = request->board_id();
+    const std::string& user_id = request->user_id();
+
+    auto board_name = data_base_.GetBoard(board_id);
+    if (!board_name.has_value()) {
+        response->set_success(false);
+        response->set_message("Доска не найдена");
+        return grpc::Status::OK;
+    }
+
+    auto& user_boards = user_owned_boards_[user_id];
+    auto it = std::find(user_boards.begin(), user_boards.end(), board_id);
+    if (it == user_boards.end()) {
+        response->set_success(false);
+        response->set_message("У вас нет прав на удаление этой доски");
+        return grpc::Status::OK;
+    }
+
+    contracts::BoardUpdate notification;
+    notification.set_action_type(contracts::BOARD_DELETED);
+    notification.set_widget_id(0);
+    session_manager_.BroadcastToSession(board_id, notification);
+
+    user_boards.erase(it);
+    session_manager_.DeleteBoardWidgets(board_id);
+    data_base_.DeleteBoard(board_id);
+    session_manager_.CloseSession(board_id);
+
+    response->set_success(true);
+    response->set_message("Доска успешно удалена");
+
     return grpc::Status::OK;
 }
 

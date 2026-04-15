@@ -25,7 +25,8 @@ class AppController : public QObject {
 public slots:
     void onAuthDialogFinished();
     void onMainScreenFinished(uint64_t board_id);
-    // void onBoardScreenFinished();
+    void onBoardDeleted(uint64_t board_id);
+    void onBoardScreenClosed();
 
 public:
 
