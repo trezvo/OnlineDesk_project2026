@@ -69,4 +69,11 @@ void SessionManager::BroadcastToSession(uint64_t board_id, const contracts::Boar
     }
 }
 
+void SessionManager::ShutdownAllInSession(uint64_t board_id) {
+    std::lock_guard<std::mutex> lock(sessions_table_mutex_);
+    if (sessions_table_.contains(board_id)) {
+        sessions_table_[board_id]->ShutdownAll();
+    }
+}
+
 }  // namespace board_module

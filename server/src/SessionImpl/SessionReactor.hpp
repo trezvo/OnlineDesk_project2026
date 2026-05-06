@@ -15,7 +15,9 @@ namespace contracts = online_desk::board;
     
 class SessionReactor final
     : public grpc::ServerBidiReactor<online_desk::board::BoardUpdate, online_desk::board::BoardUpdate> {
-
+    
+    friend class SessionInstance;
+    
     grpc::CallbackServerContext *context_;
     SessionManager& manager_;
     SessionInstance* session_instance_;

@@ -16,7 +16,7 @@ using namespace online_desk::board;
 class SessionReactor : public SessionReactorInterface {
 
     std::atomic<bool> is_running_;
-    BoardWorkerInterface& board_worker_;
+    BoardWorkerInterface* board_worker_;
     BoardUpdate read_buffer_;
     BoardUpdate write_buffer_;
     
@@ -29,10 +29,9 @@ class SessionReactor : public SessionReactorInterface {
 
 public:
 
-    explicit SessionReactor(BoardService::Stub* stub_, std::unique_ptr<grpc::ClientContext> context, BoardWorkerInterface& worker); 
-
+    explicit SessionReactor(BoardService::Stub* stub_, std::unique_ptr<grpc::ClientContext> context, BoardWorkerInterface* worker); 
+    void DetachWorker();    
     void AddUpdate(BoardUpdate request) override;
-
     void OnWriteDone(bool ok) override;
     void OnReadDone(bool ok) override;
     void OnDone(const grpc::Status& status) override;

@@ -45,6 +45,9 @@ void BoardScreen::SetupUI() {
     QPushButton* create_snapshot_button = new QPushButton("Создать снапшот", this);
     tool_bar->addWidget(create_snapshot_button);
 
+    QPushButton* back_button = new QPushButton("← Главное меню", this);
+    tool_bar->addWidget(back_button);
+
     QThread* worker_thread = new QThread(this);
     worker_ = new BoardWorker(grpc_client_, board_id_);
 
@@ -52,14 +55,12 @@ void BoardScreen::SetupUI() {
 
     connect(create_widget_button, &QPushButton::clicked, this, &BoardScreen::createWidget);
     connect(create_snapshot_button, &QPushButton::clicked, this, &BoardScreen::createSnapshot);
-
-    connect(worker_thread, &QThread::started, worker_, &BoardWorker::runWorking);
+    connect(back_button, &QPushButton::clicked, this, &BoardScreen::onBackToMenuClicked);
     connect(this, &BoardScreen::sendSessionUpdate, worker_, &BoardWorker::sendSessionUpdate);
+    connect(worker_thread, &QThread::started, worker_, &BoardWorker::runWorking);
+    connect(worker_, &BoardWorker::printUpdate, this, &BoardScreen::acceptBoardUpdate);
 
     std::cout << this->thread() << ' ' << worker_->thread() <<  std::endl;
-
-    connect(worker_, &BoardWorker::printUpdate, this, &BoardScreen::acceptBoardUpdate);
-    connect(worker_thread, &QThread::finished, worker_, &QObject::deleteLater);
 
     scene_view_->show();
     worker_thread->start();
@@ -106,7 +107,10 @@ void BoardScreen::createWidget() {
 }
 
 void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
-
+    std::cout << "acceptBoardUpdate action=" << upd.action_type() << std::endl;
+     if (is_closing_ && upd.action_type() != online_desk::board::BOARD_DELETED){
+        return;
+     }
     using namespace online_desk::board;
 
     ActionType action = upd.action_type();
@@ -223,9 +227,6 @@ void BoardScreen::requestDelete(uint64_t widget_id) {
             return;
         }
 
-        Widget* widget_ptr_ = board_widgets_[widget_id];
-        board_widgets_.erase(widget_id);
-        delete widget_ptr_;
     }
 
     online_desk::board::BoardUpdate request;
@@ -237,25 +238,35 @@ void BoardScreen::requestDelete(uint64_t widget_id) {
 }
 
 void BoardScreen::onBoardDeleted() {
-    QMessageBox::information(this, "Доска удалена", "Эта доска была удалена владельцем");
-    
+    shutdownWorker();
+    emit boardDeletedByOwner(board_id_);
     emit boardClosed();
-    
-    if (worker_) {
-        worker_->Shutdown();
-        worker_->thread()->quit();
-        worker_->thread()->wait();
-    }
-    
-    this->close();
+    close();         
 }
 
 void BoardScreen::shutdownWorker() {
+    if (worker_shutdown_.exchange(true)){
+        return;
+    }
+    is_closing_ = true;
+
     if (worker_) {
         worker_->Shutdown();
         worker_->thread()->quit();
         worker_->thread()->wait();
+        worker_ = nullptr;
     }
+}
+
+void BoardScreen::closeEvent(QCloseEvent* event) {
+    shutdownWorker();
+    QMainWindow::closeEvent(event);
+}
+
+void BoardScreen::onBackToMenuClicked() {
+    shutdownWorker();
+    emit boardClosed();
+    close();
 }
 
 

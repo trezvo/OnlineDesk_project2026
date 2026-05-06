@@ -6,6 +6,7 @@
 #include "BoardScreen/BoardScreen.hpp"
 #include <QDialog>
 #include <QScopedPointer>
+#include <QMessageBox>
 #include <QMainWindow>
 #include <memory>
 
@@ -27,6 +28,7 @@ public slots:
     void onMainScreenFinished(uint64_t board_id);
     void onBoardDeleted(uint64_t board_id);
     void onBoardScreenClosed();
+    void onBoardDeletedByOwner(uint64_t board_id);
 
 public:
 

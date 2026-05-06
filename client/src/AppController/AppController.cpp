@@ -46,6 +46,7 @@ void AppController::showBoardScreen(uint64_t board_id) {
     board_screen_ = new BoardScreen(grpc_client_, board_id);
     board_screen_->setAttribute(Qt::WA_DeleteOnClose);
     connect(board_screen_, &BoardScreen::boardClosed, this, &AppController::onBoardScreenClosed);
+    connect(board_screen_, &BoardScreen::boardDeletedByOwner, this, &AppController::onBoardDeletedByOwner);
     board_screen_->show();
 }
 
@@ -60,6 +61,11 @@ void AppController::onBoardDeleted(uint64_t board_id) {
 void AppController::onBoardScreenClosed() {
     board_screen_ = nullptr;
     showMainScreen();
+}
+
+void AppController::onBoardDeletedByOwner(uint64_t board_id) {
+    QMessageBox::information(nullptr, "Доска удалена",
+                             QString("Доска %1 была удалена владельцем.").arg(board_id));
 }
 
 void AppController::run() {

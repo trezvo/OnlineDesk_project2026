@@ -3,10 +3,10 @@
 #include <memory>
 #include <iostream>
 
-SessionReactor::SessionReactor(BoardService::Stub* stub_, std::unique_ptr<grpc::ClientContext> context, BoardWorkerInterface& worker)
+SessionReactor::SessionReactor(BoardService::Stub* stub_, std::unique_ptr<grpc::ClientContext> context, BoardWorkerInterface* worker)
     : is_running_(true)
     , board_worker_(worker)
-    , is_writing_(false) {
+    , is_writing_(false)  {
         
     stub_->async()->SubscribeBoard(context.get(), this);
 
@@ -76,13 +76,16 @@ void SessionReactor::OnReadDone(bool ok) {
         return;
     }
 
-    std::cout << "income bidi update" << std::endl;
-
-    board_worker_.addUpdate(std::move(read_buffer_));
+    if (board_worker_) {
+        board_worker_->addUpdate(std::move(read_buffer_));
+    }
     StartRead(&read_buffer_);
 }
 
 void SessionReactor::OnDone(const grpc::Status& status) {
+    if (board_worker_) {
+        board_worker_->Shutdown();
+    }
     delete this;
 }
 
@@ -92,4 +95,8 @@ void SessionReactor::Shutdown() {
     }
 
     StartWritesDone();
+}
+
+void SessionReactor::DetachWorker() {
+    board_worker_ = nullptr;
 }

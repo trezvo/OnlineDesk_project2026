@@ -42,4 +42,10 @@ void SessionInstance::BroadcastToAll(const contracts::BoardUpdate& message) {
     }
 }
 
+void SessionInstance::ShutdownAll() {
+    for (auto member : session_members_) {
+        member->Shutdown();
+    }
+}
+
 }

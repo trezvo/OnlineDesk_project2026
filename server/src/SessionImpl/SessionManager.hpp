@@ -35,6 +35,7 @@ public:
     void CloseSession(uint64_t board_id);
     void BroadcastToSession(uint64_t board_id, const contracts::BoardUpdate& message);
     SessionInstance* JoinToSession(SessionReactor *member, uint64_t board_id);
+    void ShutdownAllInSession(uint64_t board_id);
 };
 
 }  // namespace board_module

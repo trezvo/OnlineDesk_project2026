@@ -21,13 +21,14 @@ class BoardWorker : public BoardWorkerInterface {
 public:
 
     enum class Action {
-        WRITE = 1,
+        WRITE =  1,
         READ = 2
     };
 
     explicit BoardWorker(std::shared_ptr<GrpcBoardClient> grpc_client, uint64_t board_id);
     void sendSessionUpdate(online_desk::board::BoardUpdate update) override;
     void addUpdate(online_desk::board::BoardUpdate update) override; 
+    void detachStream();
     ~BoardWorker() override;
 
 private:

@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <chrono>
 #include <iostream>
+#include <thread>
 
 namespace board_module {
 
@@ -166,7 +167,8 @@ grpc::Status BoardServiceImpl::DeleteBoard(
     notification.set_action_type(contracts::BOARD_DELETED);
     notification.set_widget_id(0);
     session_manager_.BroadcastToSession(board_id, notification);
-
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    session_manager_.ShutdownAllInSession(board_id);
     user_boards.erase(it);
     session_manager_.DeleteBoardWidgets(board_id);
     data_base_.DeleteBoard(board_id);
