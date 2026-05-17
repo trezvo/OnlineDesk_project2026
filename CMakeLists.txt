@@ -15,7 +15,7 @@ find_library(GRPC_REFLECTION_LIBRARY
 )
 
 pkg_check_modules(GRPC REQUIRED 
-    grpc++
+    "grpc++ >= 1.44"
     grpc
     gpr
 )
