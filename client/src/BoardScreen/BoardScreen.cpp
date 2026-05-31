@@ -3,6 +3,7 @@
 #include "board.pb.h"
 #include <QCoreApplication>
 #include <QDir>
+#include <QEvent>
 #include <QFileDialog>
 #include <QGraphicsItem>
 #include <QImage>
@@ -11,10 +12,17 @@
 #include <QToolBar>
 #include <QThread>
 #include <QMessageBox>
+#include <QWheelEvent>
 #include <memory>
 #include <chrono>
 #include <iostream>
 #include <vector>
+
+namespace {
+constexpr double kZoomFactor = 1.2;
+constexpr double kMinZoom = 0.2;
+constexpr double kMaxZoom = 5.0;
+}
 
 BoardScreen::BoardScreen(std::shared_ptr<GrpcBoardClient> grpc_client, uint64_t board_id, QWidget* parent)
     : QMainWindow(parent)
@@ -41,6 +49,9 @@ void BoardScreen::SetupUI() {
 
     scene_view_->setRenderHint(QPainter::Antialiasing);
     scene_view_->setDragMode(QGraphicsView::RubberBandDrag);
+    scene_view_->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
+    scene_view_->setResizeAnchor(QGraphicsView::AnchorUnderMouse);
+    scene_view_->viewport()->installEventFilter(this);
 
     QToolBar *tool_bar = addToolBar("Actions");
     tool_bar->addSeparator();
@@ -54,6 +65,15 @@ void BoardScreen::SetupUI() {
     QPushButton* export_png_button = new QPushButton("Экспорт PNG", this);
     tool_bar->addWidget(export_png_button);
 
+    QPushButton* zoom_in_button = new QPushButton("+", this);
+    tool_bar->addWidget(zoom_in_button);
+
+    QPushButton* zoom_out_button = new QPushButton("-", this);
+    tool_bar->addWidget(zoom_out_button);
+
+    QPushButton* reset_zoom_button = new QPushButton("100%", this);
+    tool_bar->addWidget(reset_zoom_button);
+
     QPushButton* create_snapshot_button = new QPushButton("Создать снапшот", this);
     tool_bar->addWidget(create_snapshot_button);
 
@@ -65,6 +85,9 @@ void BoardScreen::SetupUI() {
     connect(create_widget_button, &QPushButton::clicked, this, &BoardScreen::createWidget);
     connect(delete_widget_button, &QPushButton::clicked, this, &BoardScreen::deleteSelectedWidgets);
     connect(export_png_button, &QPushButton::clicked, this, &BoardScreen::exportBoardToPng);
+    connect(zoom_in_button, &QPushButton::clicked, this, &BoardScreen::zoomIn);
+    connect(zoom_out_button, &QPushButton::clicked, this, &BoardScreen::zoomOut);
+    connect(reset_zoom_button, &QPushButton::clicked, this, &BoardScreen::resetZoom);
     connect(create_snapshot_button, &QPushButton::clicked, this, &BoardScreen::createSnapshot);
 
     connect(worker_thread, &QThread::started, worker_, &BoardWorker::runWorking);
@@ -181,6 +204,46 @@ void BoardScreen::exportBoardToPng() {
     }
 
     QMessageBox::information(this, "Экспорт PNG", "Доска сохранена в PNG");
+}
+
+void BoardScreen::applyZoom(double factor) {
+    double new_zoom = current_zoom_ * factor;
+
+    if (new_zoom < kMinZoom || new_zoom > kMaxZoom) {
+        return;
+    }
+
+    scene_view_->scale(factor, factor);
+    current_zoom_ = new_zoom;
+}
+
+void BoardScreen::zoomIn() {
+    applyZoom(kZoomFactor);
+}
+
+void BoardScreen::zoomOut() {
+    applyZoom(1.0 / kZoomFactor);
+}
+
+void BoardScreen::resetZoom() {
+    scene_view_->resetTransform();
+    current_zoom_ = 1.0;
+}
+
+bool BoardScreen::eventFilter(QObject* watched, QEvent* event) {
+    if (watched == scene_view_->viewport() && event->type() == QEvent::Wheel) {
+        QWheelEvent* wheel_event = static_cast<QWheelEvent*>(event);
+
+        if (wheel_event->modifiers() & Qt::ControlModifier) {
+            applyZoom(wheel_event->angleDelta().y() > 0
+                          ? kZoomFactor
+                          : 1.0 / kZoomFactor);
+            wheel_event->accept();
+            return true;
+        }
+    }
+
+    return QMainWindow::eventFilter(watched, event);
 }
 
 void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
