@@ -33,7 +33,10 @@ void BoardWorker::runWorking() {
                 emit printUpdate(std::move(update));
             } break;
             case (BoardWorker::Action::WRITE): {
-                stream_->AddUpdate(std::move(update));
+                std::lock_guard<std::mutex> lock(stream_mutex_);
+                if (stream_) {
+                    stream_->AddUpdate(std::move(update));
+                }
             } break;
             default: {
             } break;
@@ -54,8 +57,13 @@ void BoardWorker::Shutdown() {
     if (!is_running_.exchange(false)) {
         return;
     }
-    if (stream_) {
-        stream_->DetachWorker();
+    {
+        std::lock_guard<std::mutex> lock(stream_mutex_);
+        if (stream_) {
+            stream_->DetachWorker();
+            stream_->Shutdown();
+            stream_ = nullptr;
+        }
     }
     income_update_cv_.notify_all();
 }

@@ -254,6 +254,7 @@ void BoardScreen::shutdownWorker() {
         worker_->Shutdown();
         worker_->thread()->quit();
         worker_->thread()->wait();
+        delete worker_
         worker_ = nullptr;
     }
 }

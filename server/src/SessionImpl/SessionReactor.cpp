@@ -117,6 +117,9 @@ void SessionReactor::ProcessMessage(contracts::BoardUpdate msg) {
     if (!is_alive) {
         return;
     }
+    if (msg.action_type() == online_desk::board::BOARD_DELETED) {
+        pending_shutdown_ = true;
+    }
         
     {
         std::lock_guard<std::mutex> lock(write_mutex_);
@@ -158,7 +161,13 @@ void SessionReactor::OnWriteDone(bool ok) {
         Shutdown();
         return;
     }
-
+    {
+    std::lock_guard<std::mutex> lock(write_mutex_);
+    if (write_queue_.empty() && pending_shutdown_) {
+        Shutdown(); 
+        return;
+        }
+    }
     ProcessQueue();
 }
 
@@ -177,11 +186,17 @@ void SessionReactor::OnCancel() {
 }
 
 void SessionReactor::OnDone() {
+    uint64_t board_id = session_instance_->board_id_;
+    bool last_member = false;
     {
         std::lock_guard<std::mutex> lock(session_instance_->board_edit_mutex_);
-        session_instance_->CloseMemberConnection(this);
+        session_instance_->session_members_.erase(this);
+        last_member = session_instance_->session_members_.empty();
     }
-
+    if (last_member) {
+        manager_.CloseSession(board_id);
+        delete session_instance_;
+    }
     delete this;
 }
 

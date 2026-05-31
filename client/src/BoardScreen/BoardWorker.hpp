@@ -34,6 +34,7 @@ public:
 private:
 
     SessionReactorInterface* stream_;
+    std::mutex stream_mutex_;
 
     std::atomic<bool> is_running_;
     std::mutex income_update_mutex_;
