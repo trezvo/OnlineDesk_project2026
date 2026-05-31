@@ -55,7 +55,7 @@ COPY proto/ proto
 RUN mkdir build && \
     cd build && \
     cmake .. && \
-    cmake --build . -j$(nproc)
+    cmake --build . --target desk_server -j$(nproc)
 
 FROM ubuntu:22.04
 
