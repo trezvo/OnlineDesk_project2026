@@ -7,9 +7,9 @@ namespace board_module {
 
 SessionReactor::SessionReactor(grpc::CallbackServerContext* context, SessionManager& manager) 
     : context_(context)
-    , manager_(manager)
-    , is_alive(true)
-    , is_writing_(false) {
+      , manager_(manager)
+      , is_alive(true)
+      , is_writing_(false) {
 
     const auto& metadata = context->client_metadata();
 
@@ -78,6 +78,10 @@ void SessionReactor::Broadcast(const contracts::BoardUpdate &request) {
             );
         } break;
         case (online_desk::board::DELETE): {
+            if (!session_instance_->widgets_storage_.contains(request.widget_id())) {
+                return;
+            }
+
             manager_.DeleteWidget(request.widget_id());
             session_instance_->widgets_storage_.erase(request.widget_id());
         } break;
@@ -94,6 +98,7 @@ void SessionReactor::Broadcast(const contracts::BoardUpdate &request) {
 
     contracts::BoardUpdate message;
     message.set_action_type(request.action_type());
+    message.set_user_token(request.user_token());
     message.set_widget_id(request.widget_id());
 
     contracts::WidgetInfo* info = message.mutable_update_data();
@@ -209,7 +214,7 @@ void SessionReactor::BroadcastBoardDeleted() {
     contracts::BoardUpdate message;
     message.set_action_type(online_desk::board::BOARD_DELETED);
     message.set_widget_id(0);
-    
+
     for (auto member : session_instance_->session_members_) {
         member->ProcessMessage(message);
     }

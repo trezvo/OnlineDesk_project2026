@@ -2,21 +2,35 @@
 #include "board.grpc.pb.h"
 #include "board.pb.h"
 #include <QCoreApplication>
+#include <QDir>
+#include <QEvent>
+#include <QFileDialog>
+#include <QGraphicsItem>
+#include <QImage>
+#include <QPainter>
 #include <QPushButton>
 #include <QToolBar>
 #include <QThread>
 #include <QMessageBox>
+#include <QWheelEvent>
 #include <memory>
 #include <chrono>
 #include <iostream>
+#include <vector>
+
+namespace {
+constexpr double kZoomFactor = 1.2;
+constexpr double kMinZoom = 0.2;
+constexpr double kMaxZoom = 5.0;
+}
 
 BoardScreen::BoardScreen(std::shared_ptr<GrpcBoardClient> grpc_client, uint64_t board_id, QWidget* parent)
     : QMainWindow(parent)
-    , scene_(new QGraphicsScene(this))
-    , scene_view_(new QGraphicsView(scene_, this))
-    , grpc_client_(grpc_client)
-    , board_id_(board_id)
-    , gen64_(std::chrono::system_clock::now().time_since_epoch().count()) {
+      , scene_(new QGraphicsScene(this))
+      , scene_view_(new QGraphicsView(scene_, this))
+      , grpc_client_(grpc_client)
+      , board_id_(board_id)
+      , gen64_(std::chrono::system_clock::now().time_since_epoch().count()) {
     qRegisterMetaType<online_desk::board::BoardUpdate>("online_desk::board::BoardUpdate");
     SetupUI();
 
@@ -30,11 +44,14 @@ void BoardScreen::SetupUI() {
 
     setWindowTitle(QString::fromStdString("Board № " + std::to_string(board_id_)));
     resize(900, 600);
-    
+
     setCentralWidget(scene_view_);
-    
+
     scene_view_->setRenderHint(QPainter::Antialiasing);
     scene_view_->setDragMode(QGraphicsView::RubberBandDrag);
+    scene_view_->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
+    scene_view_->setResizeAnchor(QGraphicsView::AnchorUnderMouse);
+    scene_view_->viewport()->installEventFilter(this);
 
     QToolBar *tool_bar = addToolBar("Actions");
     tool_bar->addSeparator();
@@ -60,6 +77,21 @@ void BoardScreen::SetupUI() {
     QPushButton* create_widget_button = new QPushButton("Создать виджет", this);
     tool_bar->addWidget(create_widget_button);
 
+    QPushButton* delete_widget_button = new QPushButton("Удалить выбранное", this);
+    tool_bar->addWidget(delete_widget_button);
+
+    QPushButton* export_png_button = new QPushButton("Экспорт PNG", this);
+    tool_bar->addWidget(export_png_button);
+
+    QPushButton* zoom_in_button = new QPushButton("+", this);
+    tool_bar->addWidget(zoom_in_button);
+
+    QPushButton* zoom_out_button = new QPushButton("-", this);
+    tool_bar->addWidget(zoom_out_button);
+
+    QPushButton* reset_zoom_button = new QPushButton("100%", this);
+    tool_bar->addWidget(reset_zoom_button);
+
     QPushButton* create_snapshot_button = new QPushButton("Создать снапшот", this);
     tool_bar->addWidget(create_snapshot_button);
 
@@ -72,6 +104,11 @@ void BoardScreen::SetupUI() {
     worker_->moveToThread(worker_thread);
 
     connect(create_widget_button, &QPushButton::clicked, this, &BoardScreen::createWidget);
+    connect(delete_widget_button, &QPushButton::clicked, this, &BoardScreen::deleteSelectedWidgets);
+    connect(export_png_button, &QPushButton::clicked, this, &BoardScreen::exportBoardToPng);
+    connect(zoom_in_button, &QPushButton::clicked, this, &BoardScreen::zoomIn);
+    connect(zoom_out_button, &QPushButton::clicked, this, &BoardScreen::zoomOut);
+    connect(reset_zoom_button, &QPushButton::clicked, this, &BoardScreen::resetZoom);
     connect(create_snapshot_button, &QPushButton::clicked, this, &BoardScreen::createSnapshot);
     connect(back_button, &QPushButton::clicked, this, &BoardScreen::onBackToMenuClicked);
     connect(this, &BoardScreen::sendSessionUpdate, worker_, &BoardWorker::sendSessionUpdate);
@@ -111,7 +148,7 @@ void BoardScreen::createWidget() {
         std::lock_guard<std::mutex> lock(widget_edit_mutex_);
         board_widgets_[widget_id] = new_widget;
     }
-    
+
     online_desk::board::BoardUpdate request;
     request.set_action_type(online_desk::board::CREATE);
     request.set_widget_id(widget_id);
@@ -126,6 +163,110 @@ void BoardScreen::createWidget() {
     worker_->sendSessionUpdate(std::move(request));
 }
 
+void BoardScreen::deleteSelectedWidgets() {
+    std::vector<uint64_t> widget_ids;
+
+    for (QGraphicsItem* item : scene_->selectedItems()) {
+        Widget* widget = dynamic_cast<Widget*>(item);
+        if (widget == nullptr) {
+            continue;
+        }
+
+        widget_ids.push_back(widget->GetId());
+    }
+
+    for (uint64_t widget_id : widget_ids) {
+        requestDelete(widget_id);
+    }
+}
+
+void BoardScreen::exportBoardToPng() {
+    QRectF scene_rect = scene_->sceneRect();
+
+    if (scene_rect.isEmpty()) {
+        QMessageBox::warning(this, "Экспорт PNG", "Невозможно экспортировать пустую доску");
+        return;
+    }
+
+    QString default_path = QDir::homePath()
+                           + QString("/board-%1.png").arg(board_id_);
+
+    QString file_name = QFileDialog::getSaveFileName(
+        this,
+        "Экспорт доски в PNG",
+        default_path,
+        "PNG images (*.png)"
+    );
+
+    if (file_name.isEmpty()) {
+        return;
+    }
+
+    if (!file_name.endsWith(".png", Qt::CaseInsensitive)) {
+        file_name += ".png";
+    }
+
+    QSize image_size = scene_rect.size().toSize();
+    QImage image(image_size, QImage::Format_ARGB32);
+    image.fill(Qt::transparent);
+
+    QPainter painter(&image);
+    painter.setRenderHint(QPainter::Antialiasing);
+    scene_->render(
+        &painter,
+        QRectF(QPointF(0, 0), QSizeF(image_size)),
+        scene_rect
+    );
+    painter.end();
+
+    if (!image.save(file_name, "PNG")) {
+        QMessageBox::warning(this, "Экспорт PNG", "Не удалось сохранить PNG-файл");
+        return;
+    }
+
+    QMessageBox::information(this, "Экспорт PNG", "Доска сохранена в PNG");
+}
+
+void BoardScreen::applyZoom(double factor) {
+    double new_zoom = current_zoom_ * factor;
+
+    if (new_zoom < kMinZoom || new_zoom > kMaxZoom) {
+        return;
+    }
+
+    scene_view_->scale(factor, factor);
+    current_zoom_ = new_zoom;
+}
+
+void BoardScreen::zoomIn() {
+    applyZoom(kZoomFactor);
+}
+
+void BoardScreen::zoomOut() {
+    applyZoom(1.0 / kZoomFactor);
+}
+
+void BoardScreen::resetZoom() {
+    scene_view_->resetTransform();
+    current_zoom_ = 1.0;
+}
+
+bool BoardScreen::eventFilter(QObject* watched, QEvent* event) {
+    if (watched == scene_view_->viewport() && event->type() == QEvent::Wheel) {
+        QWheelEvent* wheel_event = static_cast<QWheelEvent*>(event);
+
+        if (wheel_event->modifiers() & Qt::ControlModifier) {
+            applyZoom(wheel_event->angleDelta().y() > 0
+                          ? kZoomFactor
+                          : 1.0 / kZoomFactor);
+            wheel_event->accept();
+            return true;
+        }
+    }
+
+    return QMainWindow::eventFilter(watched, event);
+}
+
 void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
     std::cout << "acceptBoardUpdate action=" << upd.action_type() << std::endl;
      if (is_closing_ && upd.action_type() != online_desk::board::BOARD_DELETED){
@@ -137,11 +278,11 @@ void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
     uint64_t widget_id = upd.widget_id();
  
     std::cout << "online income widget_id=" << widget_id << std::endl;
-    
+
     const WidgetInfo& info = upd.update_data();
  
     Widget* widget_ptr = nullptr;
-        
+
     switch (action) {
         case (ActionType::CREATE): {
             std::cout << "create widget, id=" << widget_id << std::endl;
@@ -150,7 +291,7 @@ void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
             widget_ptr = ProduceWidget(widget_id, type);
             widget_ptr->setContentSilent(type, text);
 
-            { 
+            {
                 std::lock_guard<std::mutex> lock(widget_edit_mutex_);
                 board_widgets_[widget_id] = widget_ptr;
             }
@@ -165,17 +306,20 @@ void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
         }
  
         case (ActionType::DELETE): {
-            
-            std::lock_guard<std::mutex> lock(widget_edit_mutex_);
-        
-            if (!board_widgets_.contains(widget_id)) {
-                return;
+            {
+                std::lock_guard<std::mutex> lock(widget_edit_mutex_);
+
+                if (!board_widgets_.contains(widget_id)) {
+                    return;
+                }
+
+                widget_ptr = board_widgets_[widget_id];
+                board_widgets_.erase(widget_id);
             }
-            widget_ptr = board_widgets_[widget_id];
-            board_widgets_.erase(widget_id);
+
             scene_->removeItem(widget_ptr);
-            delete widget_ptr;
-            
+            widget_ptr->deleteLater();
+
         } break;
  
         case (ActionType::UPDATE): {
@@ -199,7 +343,7 @@ void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
                 if (!item_exists) {
                     board_widgets_[widget_id] = ProduceWidget(widget_id, upd_type);
                 }
-                
+
                 widget_ptr = board_widgets_[widget_id];
             }
  
@@ -209,6 +353,7 @@ void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
                 widget_ptr->setContentSilent(upd_type, upd_text);
             }
  
+
             if (!item_exists) {
                 scene_->addItem(widget_ptr);
             }
@@ -249,6 +394,8 @@ void BoardScreen::requestUpdate(WidgetUpdate upd) {
 
 void BoardScreen::requestDelete(uint64_t widget_id) {
 
+    Widget* widget_ptr = nullptr;
+
     {
         std::lock_guard<std::mutex> lock(widget_edit_mutex_);
 
@@ -256,7 +403,12 @@ void BoardScreen::requestDelete(uint64_t widget_id) {
             return;
         }
 
+        widget_ptr = board_widgets_[widget_id];
+        board_widgets_.erase(widget_id);
     }
+
+    scene_->removeItem(widget_ptr);
+    widget_ptr->deleteLater();
 
     online_desk::board::BoardUpdate request;
     request.set_user_token(grpc_client_->GetUserToken());

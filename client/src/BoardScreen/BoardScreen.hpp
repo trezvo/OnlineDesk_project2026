@@ -26,6 +26,7 @@ class BoardScreen : public QMainWindow {
     std::mt19937_64 gen64_; 
     std::mutex widget_edit_mutex_;
     std::unordered_map<uint64_t, Widget*> board_widgets_;
+    double current_zoom_{1.0};
 
     BoardWorker* worker_;
     QGraphicsScene* scene_;
@@ -37,6 +38,7 @@ class BoardScreen : public QMainWindow {
 
     void SetupUI();
     Widget* ProduceWidget(uint64_t widget_id, WidgetType type = WidgetType::STICKER);
+    void applyZoom(double factor);
 
 private slots:
     void onBackToMenuClicked();
@@ -49,6 +51,11 @@ public slots:
 
     void createWidget();
     void createSnapshot();
+    void deleteSelectedWidgets();
+    void exportBoardToPng();
+    void zoomIn();
+    void zoomOut();
+    void resetZoom();
     void requestUpdate(WidgetUpdate request);
     void requestDelete(uint64_t widget_id);
 
@@ -66,6 +73,7 @@ public:
     ~BoardScreen();
     uint64_t getBoardId() const { return board_id_; }
     void shutdownWorker();
+    bool eventFilter(QObject* watched, QEvent* event) override;
 };
 
 Q_DECLARE_METATYPE(online_desk::board::BoardUpdate)
