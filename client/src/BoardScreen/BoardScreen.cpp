@@ -2,6 +2,7 @@
 #include "board.grpc.pb.h"
 #include "board.pb.h"
 #include <QCoreApplication>
+#include <QGraphicsItem>
 #include <QPushButton>
 #include <QToolBar>
 #include <QThread>
@@ -9,14 +10,15 @@
 #include <memory>
 #include <chrono>
 #include <iostream>
+#include <vector>
 
 BoardScreen::BoardScreen(std::shared_ptr<GrpcBoardClient> grpc_client, uint64_t board_id, QWidget* parent)
     : QMainWindow(parent)
-    , scene_(new QGraphicsScene(this))
-    , scene_view_(new QGraphicsView(scene_, this))
-    , grpc_client_(grpc_client)
-    , board_id_(board_id)
-    , gen64_(std::chrono::system_clock::now().time_since_epoch().count()) {
+      , scene_(new QGraphicsScene(this))
+      , scene_view_(new QGraphicsView(scene_, this))
+      , grpc_client_(grpc_client)
+      , board_id_(board_id)
+      , gen64_(std::chrono::system_clock::now().time_since_epoch().count()) {
     qRegisterMetaType<online_desk::board::BoardUpdate>("online_desk::board::BoardUpdate");
     SetupUI();
 
@@ -30,9 +32,9 @@ void BoardScreen::SetupUI() {
 
     setWindowTitle(QString::fromStdString("Board № " + std::to_string(board_id_)));
     resize(900, 600);
-    
+
     setCentralWidget(scene_view_);
-    
+
     scene_view_->setRenderHint(QPainter::Antialiasing);
     scene_view_->setDragMode(QGraphicsView::RubberBandDrag);
 
@@ -41,6 +43,9 @@ void BoardScreen::SetupUI() {
 
     QPushButton* create_widget_button = new QPushButton("Создать виджет", this);
     tool_bar->addWidget(create_widget_button);
+
+    QPushButton* delete_widget_button = new QPushButton("Удалить выбранное", this);
+    tool_bar->addWidget(delete_widget_button);
 
     QPushButton* create_snapshot_button = new QPushButton("Создать снапшот", this);
     tool_bar->addWidget(create_snapshot_button);
@@ -51,6 +56,7 @@ void BoardScreen::SetupUI() {
     worker_->moveToThread(worker_thread);
 
     connect(create_widget_button, &QPushButton::clicked, this, &BoardScreen::createWidget);
+    connect(delete_widget_button, &QPushButton::clicked, this, &BoardScreen::deleteSelectedWidgets);
     connect(create_snapshot_button, &QPushButton::clicked, this, &BoardScreen::createSnapshot);
 
     connect(worker_thread, &QThread::started, worker_, &BoardWorker::runWorking);
@@ -91,7 +97,7 @@ void BoardScreen::createWidget() {
         std::lock_guard<std::mutex> lock(widget_edit_mutex_);
         board_widgets_[widget_id] = new_widget;
     }
-    
+
     online_desk::board::BoardUpdate request;
     request.set_action_type(online_desk::board::CREATE);
     request.set_widget_id(widget_id);
@@ -105,6 +111,23 @@ void BoardScreen::createWidget() {
     worker_->sendSessionUpdate(std::move(request)); //TODO
 }
 
+void BoardScreen::deleteSelectedWidgets() {
+    std::vector<uint64_t> widget_ids;
+
+    for (QGraphicsItem* item : scene_->selectedItems()) {
+        Widget* widget = dynamic_cast<Widget*>(item);
+        if (widget == nullptr) {
+            continue;
+        }
+
+        widget_ids.push_back(widget->GetId());
+    }
+
+    for (uint64_t widget_id : widget_ids) {
+        requestDelete(widget_id);
+    }
+}
+
 void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
 
     using namespace online_desk::board;
@@ -113,17 +136,17 @@ void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
     uint64_t widget_id = upd.widget_id();
 
     std::cout << "online income widget_id=" << widget_id << std::endl;
-    
+
     const WidgetInfo& info = upd.update_data();
 
     Widget* widget_ptr = nullptr;
-        
+
     switch (action) {
         case (ActionType::CREATE): {
             std::cout << "create widget, id=" << widget_id << std::endl;
             widget_ptr = ProduceWidget(widget_id);
 
-            { 
+            {
                 std::lock_guard<std::mutex> lock(widget_edit_mutex_);
                 board_widgets_[widget_id] = widget_ptr;
             }
@@ -138,17 +161,20 @@ void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
         }
 
         case (ActionType::DELETE): {
-            
-            std::lock_guard<std::mutex> lock(widget_edit_mutex_);
-        
-            if (!board_widgets_.contains(widget_id)) {
-                return;
+            {
+                std::lock_guard<std::mutex> lock(widget_edit_mutex_);
+
+                if (!board_widgets_.contains(widget_id)) {
+                    return;
+                }
+
+                widget_ptr = board_widgets_[widget_id];
+                board_widgets_.erase(widget_id);
             }
-            widget_ptr = board_widgets_[widget_id];
-            board_widgets_.erase(widget_id);
+
             scene_->removeItem(widget_ptr);
-            delete widget_ptr;
-            
+            widget_ptr->deleteLater();
+
         } break;
 
         case (ActionType::UPDATE): {
@@ -163,12 +189,12 @@ void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
                 if (!item_exists) {
                     board_widgets_[widget_id] = ProduceWidget(widget_id);
                 }
-                
+
                 widget_ptr = board_widgets_[widget_id];
             }
 
             widget_ptr->setPosUnnotify({info.coord_x(), info.coord_y()});
-            
+
             if (!item_exists) {
                 scene_->addItem(widget_ptr);
             }
@@ -202,9 +228,9 @@ void BoardScreen::requestUpdate(WidgetUpdate upd) {
     /*
     std::cout << "update request got to end of Board method" << std::endl;
 
-    qDebug() << "[MainWindow::handleData] Поток выполнения:" 
+    qDebug() << "[MainWindow::handleData] Поток выполнения:"
                 // << QThread::currentThreadId();
-    qDebug() << "[MainWindow::handleData] Главный поток:" 
+    qDebug() << "[MainWindow::handleData] Главный поток:"
                 << QCoreApplication::instance()->thread()->currentThreadId();
     qDebug() << "[MainWindow::handleData] Главный поток:" << qMetaTypeId<BoardUpdate>();
     */
@@ -216,6 +242,8 @@ void BoardScreen::requestUpdate(WidgetUpdate upd) {
 
 void BoardScreen::requestDelete(uint64_t widget_id) {
 
+    Widget* widget_ptr = nullptr;
+
     {
         std::lock_guard<std::mutex> lock(widget_edit_mutex_);
 
@@ -223,10 +251,12 @@ void BoardScreen::requestDelete(uint64_t widget_id) {
             return;
         }
 
-        Widget* widget_ptr_ = board_widgets_[widget_id];
+        widget_ptr = board_widgets_[widget_id];
         board_widgets_.erase(widget_id);
-        delete widget_ptr_;
     }
+
+    scene_->removeItem(widget_ptr);
+    widget_ptr->deleteLater();
 
     online_desk::board::BoardUpdate request;
     request.set_user_token(grpc_client_->GetUserToken());
@@ -238,15 +268,15 @@ void BoardScreen::requestDelete(uint64_t widget_id) {
 
 void BoardScreen::onBoardDeleted() {
     QMessageBox::information(this, "Доска удалена", "Эта доска была удалена владельцем");
-    
+
     emit boardClosed();
-    
+
     if (worker_) {
         worker_->Shutdown();
         worker_->thread()->quit();
         worker_->thread()->wait();
     }
-    
+
     this->close();
 }
 
@@ -257,5 +287,3 @@ void BoardScreen::shutdownWorker() {
         worker_->thread()->wait();
     }
 }
-
-
