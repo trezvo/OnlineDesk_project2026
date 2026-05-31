@@ -33,6 +33,7 @@ SessionReactor::SessionReactor(grpc::CallbackServerContext* context, SessionMana
             contracts::WidgetInfo* diff = response.mutable_update_data();
             diff->set_coord_x(widget.x);
             diff->set_coord_y(widget.y);
+            diff->set_content(widget.content);
             ProcessMessage(response);
         }
 
@@ -60,7 +61,8 @@ void SessionReactor::Broadcast(const contracts::BoardUpdate &request) {
                 {
                 session_instance_->board_id_,
                 request.update_data().coord_x(), 
-                request.update_data().coord_y()
+                request.update_data().coord_y(),
+                request.update_data().content()
                 }
             );
             session_instance_->widgets_storage_.insert(request.widget_id());
@@ -70,7 +72,8 @@ void SessionReactor::Broadcast(const contracts::BoardUpdate &request) {
                 request.widget_id(),
                 {
                 request.update_data().coord_x(),
-                request.update_data().coord_y()
+                request.update_data().coord_y(),
+                request.update_data().content()
                 }
             );
         } break;
@@ -96,6 +99,7 @@ void SessionReactor::Broadcast(const contracts::BoardUpdate &request) {
     contracts::WidgetInfo* info = message.mutable_update_data();
     info->set_coord_x(update_info.coord_x());
     info->set_coord_y(update_info.coord_y());
+    info->set_content(update_info.content());
 
     for (auto member : session_instance_->session_members_) {
         if (member == this) {
@@ -146,7 +150,6 @@ void SessionReactor::ProcessQueue() {
         write_queue_.pop_front();
     }
 
-    request_.mutable_update_data()->clear_content();
     StartWrite(&request_);
 }
 
@@ -161,13 +164,15 @@ void SessionReactor::OnWriteDone(bool ok) {
         Shutdown();
         return;
     }
+
     {
-    std::lock_guard<std::mutex> lock(write_mutex_);
-    if (write_queue_.empty() && pending_shutdown_) {
-        Shutdown(); 
-        return;
-        }
+        std::lock_guard<std::mutex> lock(write_mutex_);
+        if (write_queue_.empty() && pending_shutdown_) {
+            Shutdown(); 
+            return;
+            }
     }
+
     ProcessQueue();
 }
 

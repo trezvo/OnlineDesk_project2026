@@ -46,7 +46,6 @@ void SessionReactor::ProcessQueue() {
         write_queue_.pop();
     }
 
-    write_buffer_.mutable_update_data()->clear_content();
     StartWrite(&write_buffer_);
 }
 
