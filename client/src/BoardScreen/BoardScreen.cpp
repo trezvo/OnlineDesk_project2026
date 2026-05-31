@@ -2,7 +2,11 @@
 #include "board.grpc.pb.h"
 #include "board.pb.h"
 #include <QCoreApplication>
+#include <QDir>
+#include <QFileDialog>
 #include <QGraphicsItem>
+#include <QImage>
+#include <QPainter>
 #include <QPushButton>
 #include <QToolBar>
 #include <QThread>
@@ -47,6 +51,9 @@ void BoardScreen::SetupUI() {
     QPushButton* delete_widget_button = new QPushButton("Удалить выбранное", this);
     tool_bar->addWidget(delete_widget_button);
 
+    QPushButton* export_png_button = new QPushButton("Экспорт PNG", this);
+    tool_bar->addWidget(export_png_button);
+
     QPushButton* create_snapshot_button = new QPushButton("Создать снапшот", this);
     tool_bar->addWidget(create_snapshot_button);
 
@@ -57,6 +64,7 @@ void BoardScreen::SetupUI() {
 
     connect(create_widget_button, &QPushButton::clicked, this, &BoardScreen::createWidget);
     connect(delete_widget_button, &QPushButton::clicked, this, &BoardScreen::deleteSelectedWidgets);
+    connect(export_png_button, &QPushButton::clicked, this, &BoardScreen::exportBoardToPng);
     connect(create_snapshot_button, &QPushButton::clicked, this, &BoardScreen::createSnapshot);
 
     connect(worker_thread, &QThread::started, worker_, &BoardWorker::runWorking);
@@ -126,6 +134,53 @@ void BoardScreen::deleteSelectedWidgets() {
     for (uint64_t widget_id : widget_ids) {
         requestDelete(widget_id);
     }
+}
+
+void BoardScreen::exportBoardToPng() {
+    QRectF scene_rect = scene_->sceneRect();
+
+    if (scene_rect.isEmpty()) {
+        QMessageBox::warning(this, "Экспорт PNG", "Невозможно экспортировать пустую доску");
+        return;
+    }
+
+    QString default_path = QDir::homePath()
+                           + QString("/board-%1.png").arg(board_id_);
+
+    QString file_name = QFileDialog::getSaveFileName(
+        this,
+        "Экспорт доски в PNG",
+        default_path,
+        "PNG images (*.png)"
+    );
+
+    if (file_name.isEmpty()) {
+        return;
+    }
+
+    if (!file_name.endsWith(".png", Qt::CaseInsensitive)) {
+        file_name += ".png";
+    }
+
+    QSize image_size = scene_rect.size().toSize();
+    QImage image(image_size, QImage::Format_ARGB32);
+    image.fill(Qt::transparent);
+
+    QPainter painter(&image);
+    painter.setRenderHint(QPainter::Antialiasing);
+    scene_->render(
+        &painter,
+        QRectF(QPointF(0, 0), QSizeF(image_size)),
+        scene_rect
+    );
+    painter.end();
+
+    if (!image.save(file_name, "PNG")) {
+        QMessageBox::warning(this, "Экспорт PNG", "Не удалось сохранить PNG-файл");
+        return;
+    }
+
+    QMessageBox::information(this, "Экспорт PNG", "Доска сохранена в PNG");
 }
 
 void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
