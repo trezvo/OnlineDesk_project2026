@@ -15,12 +15,14 @@ namespace contracts = online_desk::board;
     
 class SessionReactor final
     : public grpc::ServerBidiReactor<online_desk::board::BoardUpdate, online_desk::board::BoardUpdate> {
-
+    
+    friend class SessionInstance;
+    
     grpc::CallbackServerContext *context_;
     SessionManager& manager_;
     SessionInstance* session_instance_;
     std::atomic<bool> is_alive;
-
+    std::atomic<bool> pending_shutdown_{false};
     std::atomic<bool> is_writing_;
     std::mutex write_mutex_;
 

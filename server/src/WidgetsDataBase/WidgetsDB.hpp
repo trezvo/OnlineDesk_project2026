@@ -4,11 +4,13 @@
 #include "vector"
 #include "mutex"
 #include "functional"
+#include "string"
 
 struct WidgetsPost {
     uint64_t board_id;
     int x;
     int y;
+    std::string content;
 };
 
 struct WidgetsRead {
@@ -16,17 +18,19 @@ struct WidgetsRead {
     uint64_t board_id;
     int x;
     int y;
+    std::string content;
 };
 
 struct WidgetsUpdate {
     int x, y;
+    std::string content;
 };
 
 struct WidgetsTableWrite {
-    
     uint64_t board_id;
     int coord_x;
     int coord_y;
+    std::string content;
 };
 
 class WidgetDataBase {

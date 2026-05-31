@@ -56,6 +56,24 @@ void BoardScreen::SetupUI() {
     QToolBar *tool_bar = addToolBar("Actions");
     tool_bar->addSeparator();
 
+    widget_type_selector_ = new QComboBox(this);
+
+    widget_type_selector_->addItem("Стикер", QVariant(static_cast<int>(WidgetType::STICKER)));
+
+    widget_type_selector_->addItem("Круг", QVariant(static_cast<int>(WidgetType::CIRCLE)));
+
+    widget_type_selector_->addItem("Прямоугольник", QVariant(static_cast<int>(WidgetType::RECTANGLE)));
+
+    widget_type_selector_->addItem("Треугольник", QVariant(static_cast<int>(WidgetType::TRIANGLE)));
+
+    widget_type_selector_->addItem("Текст", QVariant(static_cast<int>(WidgetType::TEXT)));
+
+    tool_bar->addWidget(widget_type_selector_);
+ 
+    connect(widget_type_selector_, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) {
+        current_widget_type_ = static_cast<WidgetType>(widget_type_selector_->currentData().toInt());
+    });
+
     QPushButton* create_widget_button = new QPushButton("Создать виджет", this);
     tool_bar->addWidget(create_widget_button);
 
@@ -77,6 +95,9 @@ void BoardScreen::SetupUI() {
     QPushButton* create_snapshot_button = new QPushButton("Создать снапшот", this);
     tool_bar->addWidget(create_snapshot_button);
 
+    QPushButton* back_button = new QPushButton("← Главное меню", this);
+    tool_bar->addWidget(back_button);
+
     QThread* worker_thread = new QThread(this);
     worker_ = new BoardWorker(grpc_client_, board_id_);
 
@@ -89,14 +110,12 @@ void BoardScreen::SetupUI() {
     connect(zoom_out_button, &QPushButton::clicked, this, &BoardScreen::zoomOut);
     connect(reset_zoom_button, &QPushButton::clicked, this, &BoardScreen::resetZoom);
     connect(create_snapshot_button, &QPushButton::clicked, this, &BoardScreen::createSnapshot);
-
-    connect(worker_thread, &QThread::started, worker_, &BoardWorker::runWorking);
+    connect(back_button, &QPushButton::clicked, this, &BoardScreen::onBackToMenuClicked);
     connect(this, &BoardScreen::sendSessionUpdate, worker_, &BoardWorker::sendSessionUpdate);
+    connect(worker_thread, &QThread::started, worker_, &BoardWorker::runWorking);
+    connect(worker_, &BoardWorker::printUpdate, this, &BoardScreen::acceptBoardUpdate);
 
     std::cout << this->thread() << ' ' << worker_->thread() <<  std::endl;
-
-    connect(worker_, &BoardWorker::printUpdate, this, &BoardScreen::acceptBoardUpdate);
-    connect(worker_thread, &QThread::finished, worker_, &QObject::deleteLater);
 
     scene_view_->show();
     worker_thread->start();
@@ -106,8 +125,8 @@ void BoardScreen::SetupUI() {
     }
 }
 
-Widget* BoardScreen::ProduceWidget(uint64_t widget_id) {
-    Widget* new_widget = new Widget(widget_id);
+Widget* BoardScreen::ProduceWidget(uint64_t widget_id, WidgetType type) {
+    Widget* new_widget = new Widget(widget_id, type);
     connect(new_widget, &Widget::updateSignal, this, &BoardScreen::requestUpdate);
     connect(new_widget, &Widget::deleteSignal, this, &BoardScreen::requestDelete);
     return new_widget;
@@ -118,12 +137,13 @@ void BoardScreen::createSnapshot() {
 }
 
 void BoardScreen::createWidget() {
-    uint64_t widget_id = gen64_();
-
-    Widget* new_widget = ProduceWidget(widget_id);
+    const WidgetType type = current_widget_type_;
+    const uint64_t widget_id = gen64_();
+ 
+    Widget* new_widget = ProduceWidget(widget_id, type);
     new_widget->setPosUnnotify({200, 150});
     scene_->addItem(new_widget);
-
+ 
     {
         std::lock_guard<std::mutex> lock(widget_edit_mutex_);
         board_widgets_[widget_id] = new_widget;
@@ -132,14 +152,15 @@ void BoardScreen::createWidget() {
     online_desk::board::BoardUpdate request;
     request.set_action_type(online_desk::board::CREATE);
     request.set_widget_id(widget_id);
-
+ 
     auto [x, y] = new_widget->GetCoords();
-
+ 
     online_desk::board::WidgetInfo* difference = request.mutable_update_data();
     difference->set_coord_x(x);
     difference->set_coord_y(y);
-
-    worker_->sendSessionUpdate(std::move(request)); //TODO
+    difference->set_content(Widget::EncodeContent(type, ""));
+ 
+    worker_->sendSessionUpdate(std::move(request));
 }
 
 void BoardScreen::deleteSelectedWidgets() {
@@ -247,37 +268,43 @@ bool BoardScreen::eventFilter(QObject* watched, QEvent* event) {
 }
 
 void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
-
+    std::cout << "acceptBoardUpdate action=" << upd.action_type() << std::endl;
+     if (is_closing_ && upd.action_type() != online_desk::board::BOARD_DELETED){
+        return;
+     }
     using namespace online_desk::board;
-
+ 
     ActionType action = upd.action_type();
     uint64_t widget_id = upd.widget_id();
-
+ 
     std::cout << "online income widget_id=" << widget_id << std::endl;
 
     const WidgetInfo& info = upd.update_data();
-
+ 
     Widget* widget_ptr = nullptr;
 
     switch (action) {
         case (ActionType::CREATE): {
             std::cout << "create widget, id=" << widget_id << std::endl;
-            widget_ptr = ProduceWidget(widget_id);
+ 
+            const auto [type, text] = Widget::DecodeContent(info.content());
+            widget_ptr = ProduceWidget(widget_id, type);
+            widget_ptr->setContentSilent(type, text);
 
             {
                 std::lock_guard<std::mutex> lock(widget_edit_mutex_);
                 board_widgets_[widget_id] = widget_ptr;
             }
-
+ 
             widget_ptr->setPosUnnotify({info.coord_x(), info.coord_y()});
             scene_->addItem(widget_ptr);
-
+ 
         } break;
         case (ActionType::BOARD_DELETED): {
             QMetaObject::invokeMethod(this, "onBoardDeleted", Qt::QueuedConnection);
             break;
         }
-
+ 
         case (ActionType::DELETE): {
             {
                 std::lock_guard<std::mutex> lock(widget_edit_mutex_);
@@ -294,24 +321,38 @@ void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
             widget_ptr->deleteLater();
 
         } break;
-
+ 
         case (ActionType::UPDATE): {
             std::cout << "update widget, id=" << widget_id << std::endl;
-
+ 
             bool item_exists = true;
+ 
+            WidgetType upd_type = WidgetType::STICKER;
+            QString upd_text;
+            const bool has_content = !info.content().empty();
+            if (has_content) {
+                const auto [t, tx] = Widget::DecodeContent(info.content());
+                upd_type = t;
+                upd_text = tx;
+            }
+ 
             {
                 std::lock_guard<std::mutex> lock(widget_edit_mutex_);
-
                 item_exists = board_widgets_.contains(widget_id);
-
+ 
                 if (!item_exists) {
-                    board_widgets_[widget_id] = ProduceWidget(widget_id);
+                    board_widgets_[widget_id] = ProduceWidget(widget_id, upd_type);
                 }
 
                 widget_ptr = board_widgets_[widget_id];
             }
-
+ 
             widget_ptr->setPosUnnotify({info.coord_x(), info.coord_y()});
+ 
+            if (has_content){
+                widget_ptr->setContentSilent(upd_type, upd_text);
+            }
+ 
 
             if (!item_exists) {
                 scene_->addItem(widget_ptr);
@@ -339,19 +380,12 @@ void BoardScreen::requestUpdate(WidgetUpdate upd) {
     online_desk::board::WidgetInfo* difference = request.mutable_update_data();
     difference->set_coord_x(upd.new_x);
     difference->set_coord_y(upd.new_y);
+    difference->set_content(upd.content);
 
     request.set_user_token(grpc_client_->GetUserToken());
     request.set_action_type(online_desk::board::ActionType::UPDATE);
     request.set_widget_id(upd.widget_id);
-    /*
-    std::cout << "update request got to end of Board method" << std::endl;
 
-    qDebug() << "[MainWindow::handleData] Поток выполнения:"
-                // << QThread::currentThreadId();
-    qDebug() << "[MainWindow::handleData] Главный поток:"
-                << QCoreApplication::instance()->thread()->currentThreadId();
-    qDebug() << "[MainWindow::handleData] Главный поток:" << qMetaTypeId<BoardUpdate>();
-    */
     worker_->sendSessionUpdate(std::move(request));
 
     std::cout << "after emit" <<std::endl;
@@ -385,23 +419,36 @@ void BoardScreen::requestDelete(uint64_t widget_id) {
 }
 
 void BoardScreen::onBoardDeleted() {
-    QMessageBox::information(this, "Доска удалена", "Эта доска была удалена владельцем");
-
+    shutdownWorker();
+    emit boardDeletedByOwner(board_id_);
     emit boardClosed();
-
-    if (worker_) {
-        worker_->Shutdown();
-        worker_->thread()->quit();
-        worker_->thread()->wait();
-    }
-
-    this->close();
+    close();         
 }
 
 void BoardScreen::shutdownWorker() {
+    if (worker_shutdown_.exchange(true)){
+        return;
+    }
+    is_closing_ = true;
+
     if (worker_) {
         worker_->Shutdown();
         worker_->thread()->quit();
         worker_->thread()->wait();
+        delete worker_;
+        worker_ = nullptr;
     }
 }
+
+void BoardScreen::closeEvent(QCloseEvent* event) {
+    shutdownWorker();
+    QMainWindow::closeEvent(event);
+}
+
+void BoardScreen::onBackToMenuClicked() {
+    shutdownWorker();
+    emit boardClosed();
+    close();
+}
+
+

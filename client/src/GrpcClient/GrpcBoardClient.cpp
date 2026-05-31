@@ -163,10 +163,10 @@ DeleteBoardResult GrpcBoardClient::deleteBoard(uint64_t board_id) {
     return {false, std::move(error_msg)};
 }
 
-SessionReactorInterface* GrpcBoardClient::connectToBoard(BoardWorkerInterface& worker, uint64_t board_id) {
-
+SessionReactorInterface* GrpcBoardClient::connectToBoard(
+    BoardWorkerInterface& worker, uint64_t board_id)
+{
     auto context = std::make_unique<grpc::ClientContext>();
     context->AddMetadata("custom-board-id", std::to_string(board_id));
-
-    return new SessionReactor(board_stub_.get(), std::move(context), worker);
+    return new SessionReactor(board_stub_.get(), std::move(context), &worker);
 }

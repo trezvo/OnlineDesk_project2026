@@ -27,6 +27,7 @@ public:
     SessionInstance* JoinToSession(SessionReactor* reactor);
     explicit SessionInstance(SessionManager& manager, uint64_t board_id);
     void BroadcastToAll(const contracts::BoardUpdate& message);
+    void ShutdownAll();
 };
 
 }

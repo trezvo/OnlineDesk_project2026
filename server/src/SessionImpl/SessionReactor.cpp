@@ -33,6 +33,7 @@ SessionReactor::SessionReactor(grpc::CallbackServerContext* context, SessionMana
             contracts::WidgetInfo* diff = response.mutable_update_data();
             diff->set_coord_x(widget.x);
             diff->set_coord_y(widget.y);
+            diff->set_content(widget.content);
             ProcessMessage(response);
         }
 
@@ -58,9 +59,10 @@ void SessionReactor::Broadcast(const contracts::BoardUpdate &request) {
             manager_.AddWidget(
                 request.widget_id(),
                 {
-                    session_instance_->board_id_,
-                    request.update_data().coord_x(),
-                    request.update_data().coord_y()
+                session_instance_->board_id_,
+                request.update_data().coord_x(), 
+                request.update_data().coord_y(),
+                request.update_data().content()
                 }
             );
             session_instance_->widgets_storage_.insert(request.widget_id());
@@ -69,8 +71,9 @@ void SessionReactor::Broadcast(const contracts::BoardUpdate &request) {
             manager_.UpdateWidget(
                 request.widget_id(),
                 {
-                    request.update_data().coord_x(),
-                    request.update_data().coord_y()
+                request.update_data().coord_x(),
+                request.update_data().coord_y(),
+                request.update_data().content()
                 }
             );
         } break;
@@ -101,6 +104,7 @@ void SessionReactor::Broadcast(const contracts::BoardUpdate &request) {
     contracts::WidgetInfo* info = message.mutable_update_data();
     info->set_coord_x(update_info.coord_x());
     info->set_coord_y(update_info.coord_y());
+    info->set_content(update_info.content());
 
     for (auto member : session_instance_->session_members_) {
         if (member == this) {
@@ -122,7 +126,10 @@ void SessionReactor::ProcessMessage(contracts::BoardUpdate msg) {
     if (!is_alive) {
         return;
     }
-
+    if (msg.action_type() == online_desk::board::BOARD_DELETED) {
+        pending_shutdown_ = true;
+    }
+        
     {
         std::lock_guard<std::mutex> lock(write_mutex_);
         write_queue_.push_back(std::move(msg));
@@ -148,7 +155,6 @@ void SessionReactor::ProcessQueue() {
         write_queue_.pop_front();
     }
 
-    request_.mutable_update_data()->clear_content();
     StartWrite(&request_);
 }
 
@@ -162,6 +168,14 @@ void SessionReactor::OnWriteDone(bool ok) {
     if (!ok) {
         Shutdown();
         return;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(write_mutex_);
+        if (write_queue_.empty() && pending_shutdown_) {
+            Shutdown(); 
+            return;
+            }
     }
 
     ProcessQueue();
@@ -182,11 +196,17 @@ void SessionReactor::OnCancel() {
 }
 
 void SessionReactor::OnDone() {
+    uint64_t board_id = session_instance_->board_id_;
+    bool last_member = false;
     {
         std::lock_guard<std::mutex> lock(session_instance_->board_edit_mutex_);
-        session_instance_->CloseMemberConnection(this);
+        session_instance_->session_members_.erase(this);
+        last_member = session_instance_->session_members_.empty();
     }
-
+    if (last_member) {
+        manager_.CloseSession(board_id);
+        delete session_instance_;
+    }
     delete this;
 }
 

@@ -10,6 +10,7 @@
 #include <QMetaType>
 #include <QGraphicsScene>
 #include <QGraphicsView>
+#include <QComboBox>
 #include <memory>
 #include <queue>
 #include <random>
@@ -30,13 +31,21 @@ class BoardScreen : public QMainWindow {
     BoardWorker* worker_;
     QGraphicsScene* scene_;
     QGraphicsView* scene_view_;
+    QComboBox* widget_type_selector_;
+    WidgetType current_widget_type_{WidgetType::STICKER};
+    std::atomic<bool> worker_shutdown_{false};
+    std::atomic<bool> is_closing_{false};
 
     void SetupUI();
-    Widget* ProduceWidget(uint64_t widget_id);
+    Widget* ProduceWidget(uint64_t widget_id, WidgetType type = WidgetType::STICKER);
     void applyZoom(double factor);
 
 private slots:
+    void onBackToMenuClicked();
     void onBoardDeleted();
+    
+protected:
+    void closeEvent(QCloseEvent* event) override;    
 
 public slots:
 
@@ -56,6 +65,7 @@ signals:
 
     void sendSessionUpdate(online_desk::board::BoardUpdate update);
     void boardClosed();
+    void boardDeletedByOwner(uint64_t board_id);
 
 public:
 

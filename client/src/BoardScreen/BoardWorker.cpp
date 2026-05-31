@@ -8,6 +8,7 @@ BoardWorker::BoardWorker(std::shared_ptr<GrpcBoardClient> grpc_client, uint64_t 
     stream_ = grpc_client->connectToBoard(*this, board_id);
 }
 
+
 void BoardWorker::runWorking() {
     std::cout << "board worked is running" << std::endl;
 
@@ -32,7 +33,10 @@ void BoardWorker::runWorking() {
                 emit printUpdate(std::move(update));
             } break;
             case (BoardWorker::Action::WRITE): {
-                stream_->AddUpdate(std::move(update));
+                std::lock_guard<std::mutex> lock(stream_mutex_);
+                if (stream_) {
+                    stream_->AddUpdate(std::move(update));
+                }
             } break;
             default: {
             } break;
@@ -53,17 +57,30 @@ void BoardWorker::Shutdown() {
     if (!is_running_.exchange(false)) {
         return;
     }
-    income_update_cv_.notify_all();
-    if (stream_) {
-        stream_->Shutdown();
+    {
+        std::lock_guard<std::mutex> lock(stream_mutex_);
+        if (stream_) {
+            stream_->DetachWorker();
+            stream_->Shutdown();
+            stream_ = nullptr;
+        }
     }
+    income_update_cv_.notify_all();
 }
+
 
 void BoardWorker::addUpdate(online_desk::board::BoardUpdate update) {
     {
         std::lock_guard<std::mutex> lock(income_update_mutex_);
         income_updates_queue_.push({BoardWorker::Action::READ, std::move(update)});
         income_update_cv_.notify_one();
+    }
+}
+
+void BoardWorker::detachStream() {
+    if (stream_) {
+        stream_->DetachWorker();
+        stream_ = nullptr;
     }
 }
 
