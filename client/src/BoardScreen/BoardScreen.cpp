@@ -450,5 +450,3 @@ void BoardScreen::onBackToMenuClicked() {
     emit boardClosed();
     close();
 }
-
-

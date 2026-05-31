@@ -175,6 +175,7 @@ QVariant Widget::itemChange(GraphicsItemChange change, const QVariant& value) {
 QPointF Widget::GetCoords() const {
     return pos();
 }
+
 QRectF Widget::DeleteButtonRect() const {
     return QRectF(30, -46, 16, 16);
 }
@@ -206,8 +207,4 @@ void Widget::hoverLeaveEvent(QGraphicsSceneHoverEvent* event) {
 
 uint64_t Widget::GetId() const {
     return widget_id_;
-}
-
-QPointF Widget::GetCoords() {
-    return pos();
 }

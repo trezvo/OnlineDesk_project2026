@@ -14,6 +14,8 @@
 #include <memory>
 #include <queue>
 #include <random>
+#include <unordered_map>
+#include <mutex>
 
 using namespace online_desk::board;
 
