@@ -40,6 +40,7 @@ public slots:
 
     void createWidget();
     void createSnapshot();
+    void deleteSelectedWidgets();
     void requestUpdate(WidgetUpdate request);
     void requestDelete(uint64_t widget_id);
 
