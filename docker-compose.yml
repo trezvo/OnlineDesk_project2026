@@ -4,7 +4,7 @@ services:
   server: 
     build: . 
     container_name: server
-    command: ["./desk_server"]
+    command: ["./usr/local/bin/desk_server"]
     ports:
       - "50051:50051"
     environment:
@@ -23,20 +23,20 @@ services:
       retries: 3
 
 
-  client:
-    build: .
-    container_name: tcp_client
-    command: ["./desk_client"]
-    depends_on:
-      server:
-        condition: service_healthy
-    networks:
-      - app-network
-    # Для интерактивного режима (если клиент ждёт ввод)
-    stdin_open: true
-    tty: true
-    # Профиль для ручного запуска
-    profiles: ["cli"]
+  # client:
+  #   build: .
+  #   container_name: tcp_client
+  #   command: ["./app/desk_client"]
+  #   depends_on:
+  #     server:
+  #       condition: service_healthy
+  #   networks:
+  #     - app-network
+  #   # Для интерактивного режима (если клиент ждёт ввод)
+  #   stdin_open: true
+  #   tty: true
+  #   # Профиль для ручного запуска
+  #   profiles: ["cli"]
 
 networks:
   app-network:

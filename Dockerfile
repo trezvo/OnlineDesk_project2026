@@ -52,15 +52,13 @@ COPY client/src client/src
 COPY server/src server/src
 COPY proto/ proto
 
-RUN mkdir build && \
-    cd build && \
-    cmake .. && \
+RUN cmake . && \
     cmake --build . --target desk_server -j$(nproc)
 
 FROM ubuntu:22.04
 
 WORKDIR /app
 
-COPY --from=builder /build /app
+COPY --from=builder /build/server/desk_server /usr/local/bin/desk_server
 
 EXPOSE 50051
