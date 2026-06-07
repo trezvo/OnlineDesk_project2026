@@ -3,6 +3,7 @@
 #include <memory>
 #include "GrpcClient/GrpcBoardClient.hpp"
 #include "AppController/AppController.hpp"
+#include <iostream>
 
 int main(int argc, char *argv[]) {
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
@@ -15,6 +16,8 @@ int main(int argc, char *argv[]) {
     
     AppController controller(client);
     controller.run();
+
+    std::cout << "controller runs" << std::endl;
 
     return app.exec();
 }

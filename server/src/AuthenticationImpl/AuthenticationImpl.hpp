@@ -8,6 +8,8 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "Database/ConnectionManager.hpp"
+#include "Database/UserRepository.hpp"
 #include "auth.grpc.pb.h"
 #include "auth.pb.h"
 #include "sodium.h"
@@ -16,32 +18,8 @@ namespace auth_module {
 
 namespace contract = online_desk::auth;
 
-class UsersDataBase {
-public:
-    struct UserInfo {
-        std::string id;
-        std::string username;
-        std::string password;
-    };
-
-    UserInfo GetUserData(const std::string &name);
-    void SetUserData(
-        const std::string &id,
-        const std::string &username,
-        const std::string &password
-    );
-
-    inline bool contains(const std::string &name) const {
-        return users_data_base_.contains(name);
-    }
-
-private:
-    std::map<std::string, UserInfo> users_data_base_;
-};
-
 class AuthenticationServiceImpl final
     : public contract::AuthenticationService::Service {
-    std::shared_ptr<UsersDataBase> users_data_base_;
 
     static std::string GenerateUUID();
     static std::string HashPassword(const std::string &password);
@@ -49,12 +27,13 @@ class AuthenticationServiceImpl final
     static bool
     VerifyPassword(const std::string &password, const std::string &hash);
 
+    std::shared_ptr<db::UserRepository> user_table_;
     std::mutex token_mutex_;
     std::unordered_map<std::string, uint64_t> online_tokens_;
     std::mt19937_64 create_rand_64_;
 
 public:
-    AuthenticationServiceImpl();
+    AuthenticationServiceImpl(std::shared_ptr<ODBConnectionManager> connection_pool);
     ~AuthenticationServiceImpl() override;
 
     grpc::Status UserRegister(

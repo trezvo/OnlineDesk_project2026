@@ -196,16 +196,9 @@ void SessionReactor::OnCancel() {
 }
 
 void SessionReactor::OnDone() {
-    uint64_t board_id = session_instance_->board_id_;
-    bool last_member = false;
     {
         std::lock_guard<std::mutex> lock(session_instance_->board_edit_mutex_);
-        session_instance_->session_members_.erase(this);
-        last_member = session_instance_->session_members_.empty();
-    }
-    if (last_member) {
-        manager_.CloseSession(board_id);
-        delete session_instance_;
+        session_instance_->CloseMemberConnection(this);
     }
     delete this;
 }

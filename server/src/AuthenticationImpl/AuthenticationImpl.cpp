@@ -12,24 +12,12 @@ namespace auth_module {
 
 namespace contract = online_desk::auth;
 
-UsersDataBase::UserInfo UsersDataBase::GetUserData(const std::string &name) {
-    if (!users_data_base_.contains(name)) {
-        throw std::runtime_error("User doesn't exist");
-    }
-    return users_data_base_.at(name);
+AuthenticationServiceImpl::AuthenticationServiceImpl(std::shared_ptr<ODBConnectionManager> connection_pool) :
+    user_table_(std::make_shared<db::UserRepository>(connection_pool)) {
 }
 
-void UsersDataBase::SetUserData(
-    const std::string &id,
-    const std::string &username,
-    const std::string &password
-) {
-    if (users_data_base_.contains(username)) {
-        throw std::runtime_error("User with given name already exists");
-    }
+AuthenticationServiceImpl::~AuthenticationServiceImpl() = default;
 
-    users_data_base_[username] = {id, username, password};
-}
 
 std::string AuthenticationServiceImpl::GenerateUUID() {
     uuid_t uuid;
@@ -71,12 +59,6 @@ bool AuthenticationServiceImpl::VerifyPassword(
            ) == 0;
 }
 
-AuthenticationServiceImpl::AuthenticationServiceImpl() {
-    users_data_base_ = std::make_shared<UsersDataBase>();
-}
-
-AuthenticationServiceImpl::~AuthenticationServiceImpl() = default;
-
 grpc::Status AuthenticationServiceImpl::UserRegister(
     grpc::ServerContext *server,
     const contract::RegisterRequest *request,
@@ -84,29 +66,37 @@ grpc::Status AuthenticationServiceImpl::UserRegister(
 ) {
     std::cout << "here_register1" << std::endl;
 
-    const std::string &username = request->username();
-    const std::string &password = request->password();
+        try {
+        const std::string &username = request->username();
+        const std::string &password = request->password();
 
-    if (username.empty() || password.empty()) {
-        response->set_register_succeed(false);
-        response->set_message("Введите логин и пароль");
+        if (username.empty() || password.empty()) {
+            response->set_register_succeed(false);
+            response->set_message("Введите логин и пароль");
+            return grpc::Status::OK;
+        }
+
+        db::User user(GenerateUUID(), username, HashPassword(password));
+
+        response->set_register_succeed(true);
+        response->set_message("Успешная регистрация");
+
+        if (!user_table_->create(user)) {    
+            response->set_register_succeed(false);
+            response->set_message("Пользователь с данным именем уже существует!");
+        }
+
+        std::cout << "regisret_out_here1" << std::endl;
+
         return grpc::Status::OK;
     }
-
-    try {
-        users_data_base_->SetUserData(
-            GenerateUUID(), username, HashPassword(password)
-        );
-    } catch (std::exception &e) {
-        response->set_register_succeed(false);
-        response->set_message("Пользователь с данным именем уже существует!");
-        return grpc::Status::OK;
+    catch (const odb::exception& e) {
+        std::cerr << "ODB error: " << e.what() << std::endl;
+        return grpc::Status(grpc::StatusCode::INTERNAL, e.what());
+    } catch (const std::exception& e) {
+        std::cerr << "General error: " << e.what() << std::endl;
+        return grpc::Status(grpc::StatusCode::UNKNOWN, e.what());
     }
-
-    response->set_register_succeed(true);
-    response->set_message("Успешная регистрация");
-
-    return grpc::Status::OK;
 }
 
 grpc::Status AuthenticationServiceImpl::UserLogin(
@@ -126,36 +116,44 @@ grpc::Status AuthenticationServiceImpl::UserLogin(
     }
 
     try {
-        auto user_info = users_data_base_->GetUserData(username);
+        auto user_query = user_table_->FindByName(username);
 
-        if (VerifyPassword(password, user_info.password)) {
-            response->set_login_succeed(true);
-            response->set_message("Добро пожаловать!");
-            response->set_user_id(user_info.id);
-
-            uint64_t new_login_token = 0;
-
-            if (sodium_init_code_ < 0) {
-                new_login_token = create_rand_64_();
-            } else {
-                new_login_token = ((uint64_t)randombytes_random() << 32) |
-                                  randombytes_random();
-            }
-            response->set_user_token(new_login_token);
-
-            {
-                std::lock_guard tmp_lock(token_mutex_);
-                online_tokens_[user_info.id] = new_login_token;
-            }
-
-        } else {
+        if (!user_query) {
             response->set_login_succeed(false);
             response->set_message("Неверное имя или пароль");
+            return grpc::Status::OK;
         }
 
-    } catch (std::exception &e) {
+        db::User user = user_query.value();
+
+        if (!VerifyPassword(password, user.password())) {
+            response->set_login_succeed(false);
+            response->set_message("Неверное имя или пароль");
+            return grpc::Status::OK;
+        }
+
+        response->set_login_succeed(true);
+        response->set_message("Добро пожаловать!");
+        response->set_user_id(user.uuid());
+
+        uint64_t new_login_token = 0;
+
+        if (sodium_init_code_ < 0) {
+            new_login_token = create_rand_64_();
+        } else {
+            new_login_token = ((uint64_t)randombytes_random() << 32) |
+                                randombytes_random();
+        }
+        response->set_user_token(new_login_token);
+
+        {
+            std::lock_guard tmp_lock(token_mutex_);
+            online_tokens_[user.uuid()] = new_login_token;
+        }
+
+    } catch (const odb::exception& e) {
         response->set_login_succeed(false);
-        response->set_message("Неверное имя или пароль");
+        response->set_message(e.what());
         return grpc::Status::OK;
     }
 

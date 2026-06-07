@@ -5,8 +5,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
-find_package(Protobuf REQUIRED)
 find_package(PkgConfig REQUIRED)
+find_package(Protobuf REQUIRED)
 
 find_library(GRPC_REFLECTION_LIBRARY 
     NAMES grpc++_reflection
@@ -81,8 +81,8 @@ target_link_libraries(proto_generated PUBLIC
     rt
 )
 
-# message(STATUS "GRPC_LIBRARIES = ${GRPC_LIBRARIES}")
-# message(STATUS "GRPC_LIBRARY_DIRS = ${GRPC_LIBRARY_DIRS}")
+message(STATUS "GRPC_LIBRARIES = ${GRPC_LIBRARIES}")
+message(STATUS "GRPC_LIBRARY_DIRS = ${GRPC_LIBRARY_DIRS}")
 
 add_subdirectory(client)
 add_subdirectory(server)

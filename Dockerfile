@@ -9,6 +9,9 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     cmake \
     git \
+    libpq5 \
+    gdebi-core \
+    libpq-dev \
     libssl-dev \
     qt6-base-dev \
     qt6-tools-dev \
@@ -22,8 +25,22 @@ RUN apt-get update && apt-get install -y \
     libxcb-icccm4-dev \
     libxcb-keysyms1-dev \
     libxcb-image0-dev \
+    gnupg \
     && rm -rf /var/lib/apt/lists/*
 
+
+
+COPY *.deb /tmp/packages/
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    gdebi-core \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    /tmp/packages/*.deb \
+    && rm -rf /var/lib/apt/lists/* /tmp/packages
 
 RUN git clone --depth 1 -b ${GRPC_VERSION} --recurse-submodules https://github.com/grpc/grpc /opt/grpc-src && \
     cd /opt/grpc-src && \
@@ -39,7 +56,6 @@ RUN git clone --depth 1 -b ${GRPC_VERSION} --recurse-submodules https://github.c
     make install && \
     ldconfig && \
     rm -rf /opt/grpc-src
-
 
 WORKDIR /build
 

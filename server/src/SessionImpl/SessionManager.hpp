@@ -15,7 +15,6 @@ namespace board_module {
 
 namespace contracts = online_desk::board;
 
-
 class SessionManager {
     
     std::mt19937 create_rand_64_ = std::mt19937(std::chrono::system_clock::now().time_since_epoch().count());

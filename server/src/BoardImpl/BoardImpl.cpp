@@ -68,7 +68,7 @@ std::string BoardServiceImpl::GetBoardName(uint64_t board_id) const {
 }
 
 grpc::Status BoardServiceImpl::FetchUserBoards(
-    grpc::ServerContext *constext,
+    grpc::ServerContext *context,
     const contracts::FetchUserBoardsRequest *request,
     contracts::FetchUserBoardsResponse *response
 ) {
