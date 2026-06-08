@@ -6,8 +6,10 @@
 #include <QEvent>
 #include <QFileDialog>
 #include <QGraphicsItem>
+#include <QGraphicsPathItem>
 #include <QImage>
 #include <QPainter>
+#include <QPainterPath>
 #include <QPushButton>
 #include <QToolBar>
 #include <QThread>
@@ -15,6 +17,7 @@
 #include <QWheelEvent>
 #include <memory>
 #include <chrono>
+#include <cmath>
 #include <iostream>
 #include <vector>
 
@@ -39,7 +42,6 @@ BoardScreen::BoardScreen(std::shared_ptr<GrpcBoardClient> grpc_client, uint64_t 
 }
 
 BoardScreen::~BoardScreen() = default;
-
 void BoardScreen::SetupUI() {
 
     setWindowTitle(QString::fromStdString("Board № " + std::to_string(board_id_)));
@@ -68,14 +70,21 @@ void BoardScreen::SetupUI() {
 
     widget_type_selector_->addItem("Текст", QVariant(static_cast<int>(WidgetType::TEXT)));
 
+    widget_type_selector_->addItem("Стрелка", QVariant(static_cast<int>(WidgetType::ARROW)));
+
+    widget_type_selector_->addItem("Рисование", QVariant(static_cast<int>(WidgetType::DRAWING)));
+
+    widget_type_selector_->addItem("Ластик", QVariant(static_cast<int>(WidgetType::ERASER)));
+
     tool_bar->addWidget(widget_type_selector_);
  
     connect(widget_type_selector_, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) {
         current_widget_type_ = static_cast<WidgetType>(widget_type_selector_->currentData().toInt());
+        updateToolMode();
     });
 
-    QPushButton* create_widget_button = new QPushButton("Создать виджет", this);
-    tool_bar->addWidget(create_widget_button);
+    create_widget_button_ = new QPushButton("Создать виджет", this);
+    tool_bar->addWidget(create_widget_button_);
 
     QPushButton* delete_widget_button = new QPushButton("Удалить выбранное", this);
     tool_bar->addWidget(delete_widget_button);
@@ -100,10 +109,9 @@ void BoardScreen::SetupUI() {
 
     QThread* worker_thread = new QThread(this);
     worker_ = new BoardWorker(grpc_client_, board_id_);
-
     worker_->moveToThread(worker_thread);
 
-    connect(create_widget_button, &QPushButton::clicked, this, &BoardScreen::createWidget);
+    connect(create_widget_button_, &QPushButton::clicked, this, &BoardScreen::createWidget);
     connect(delete_widget_button, &QPushButton::clicked, this, &BoardScreen::deleteSelectedWidgets);
     connect(export_png_button, &QPushButton::clicked, this, &BoardScreen::exportBoardToPng);
     connect(zoom_in_button, &QPushButton::clicked, this, &BoardScreen::zoomIn);
@@ -125,6 +133,33 @@ void BoardScreen::SetupUI() {
     }
 }
 
+void BoardScreen::updateToolMode() {
+    const bool interactive = (current_widget_type_ == WidgetType::ARROW ||current_widget_type_ == WidgetType::DRAWING || current_widget_type_ == WidgetType::ERASER);
+ 
+    if (create_widget_button_) {
+        create_widget_button_->setEnabled(!interactive);
+    }
+ 
+    if (interactive) {
+        scene_view_->setDragMode(QGraphicsView::NoDrag);
+        scene_view_->viewport()->setCursor(
+            current_widget_type_ == WidgetType::ERASER ? Qt::CrossCursor : Qt::CrossCursor);
+    } else {
+
+        placing_arrow_ = false;
+        is_drawing_ = false;
+        is_erasing_ = false;
+        if (drawing_preview_) {
+            scene_->removeItem(drawing_preview_);
+            delete drawing_preview_;
+            drawing_preview_ = nullptr;
+        }
+        current_drawing_points_.clear();
+        scene_view_->setDragMode(QGraphicsView::RubberBandDrag);
+        scene_view_->viewport()->unsetCursor();
+    }
+}
+
 Widget* BoardScreen::ProduceWidget(uint64_t widget_id, WidgetType type) {
     Widget* new_widget = new Widget(widget_id, type);
     connect(new_widget, &Widget::updateSignal, this, &BoardScreen::requestUpdate);
@@ -137,6 +172,10 @@ void BoardScreen::createSnapshot() {
 }
 
 void BoardScreen::createWidget() {
+    if (current_widget_type_ == WidgetType::ARROW || current_widget_type_ == WidgetType::DRAWING || current_widget_type_ == WidgetType::ERASER) {
+        return;
+    }
+
     const WidgetType type = current_widget_type_;
     const uint64_t widget_id = gen64_();
  
@@ -162,6 +201,62 @@ void BoardScreen::createWidget() {
  
     worker_->sendSessionUpdate(std::move(request));
 }
+
+void BoardScreen::createArrow(QPointF p1, QPointF p2) {
+    const uint64_t widget_id = gen64_();
+    const QString  data = QString("%1,%2,%3,%4").arg(static_cast<int>(p1.x())).arg(static_cast<int>(p1.y())).arg(static_cast<int>(p2.x())).arg(static_cast<int>(p2.y()));
+
+    Widget* w = ProduceWidget(widget_id, WidgetType::ARROW);
+    w->setContentSilent(WidgetType::ARROW, data);
+    w->setPosUnnotify({0, 0});
+    scene_->addItem(w);
+    {
+        std::lock_guard<std::mutex> lock(widget_edit_mutex_);
+        board_widgets_[widget_id] = w;
+    }
+ 
+    online_desk::board::BoardUpdate request;
+    request.set_action_type(online_desk::board::CREATE);
+    request.set_widget_id(widget_id);
+    auto* diff = request.mutable_update_data();
+    diff->set_coord_x(0);
+    diff->set_coord_y(0);
+    diff->set_content(Widget::EncodeContent(WidgetType::ARROW, data));
+    worker_->sendSessionUpdate(std::move(request));
+}
+
+void BoardScreen::createDrawing(const std::vector<QPointF>& points) {
+    if (points.size() < 2) return;
+ 
+    const uint64_t widget_id = gen64_();
+ 
+    QStringList parts;
+    for (const QPointF& pt : points) {
+        parts << QString::number(static_cast<int>(pt.x())) << QString::number(static_cast<int>(pt.y()));
+    }
+    const QString data = parts.join(",");
+ 
+    Widget* w = ProduceWidget(widget_id, WidgetType::DRAWING);
+    w->setContentSilent(WidgetType::DRAWING, data);
+    w->setPosUnnotify({0, 0});
+    scene_->addItem(w);
+
+    {
+        std::lock_guard<std::mutex> lock(widget_edit_mutex_);
+        board_widgets_[widget_id] = w;
+    }
+ 
+    online_desk::board::BoardUpdate request;
+    request.set_action_type(online_desk::board::CREATE);
+    request.set_widget_id(widget_id);
+    auto* diff = request.mutable_update_data();
+    diff->set_coord_x(0);
+    diff->set_coord_y(0);
+    diff->set_content(Widget::EncodeContent(WidgetType::DRAWING, data));
+    worker_->sendSessionUpdate(std::move(request));
+}
+
+
 
 void BoardScreen::deleteSelectedWidgets() {
     std::vector<uint64_t> widget_ids;
@@ -252,18 +347,121 @@ void BoardScreen::resetZoom() {
 }
 
 bool BoardScreen::eventFilter(QObject* watched, QEvent* event) {
-    if (watched == scene_view_->viewport() && event->type() == QEvent::Wheel) {
-        QWheelEvent* wheel_event = static_cast<QWheelEvent*>(event);
-
-        if (wheel_event->modifiers() & Qt::ControlModifier) {
-            applyZoom(wheel_event->angleDelta().y() > 0
-                          ? kZoomFactor
-                          : 1.0 / kZoomFactor);
-            wheel_event->accept();
+    if (watched != scene_view_->viewport()) {
+        return QMainWindow::eventFilter(watched, event);
+    }
+    
+    if (event->type() == QEvent::Wheel) {
+        auto* we = static_cast<QWheelEvent*>(event);
+        if (we->modifiers() & Qt::ControlModifier) {
+            applyZoom(we->angleDelta().y() > 0 ? kZoomFactor : 1.0 / kZoomFactor);
+            we->accept();
             return true;
         }
     }
 
+    if (current_widget_type_ == WidgetType::ARROW && event->type() == QEvent::MouseButtonPress) {
+        auto* me = static_cast<QMouseEvent*>(event);
+        const QPointF sp = scene_view_->mapToScene(me->position().toPoint());
+        if (me->button() == Qt::LeftButton) {
+            if (!placing_arrow_) {
+                arrow_start_   = sp;
+                placing_arrow_ = true;
+            } else {
+                createArrow(arrow_start_, sp);
+                placing_arrow_ = false;
+            }
+            return true;
+        }
+        if (me->button() == Qt::RightButton) {
+            placing_arrow_ = false;
+            return true;
+        }
+    }
+
+    if (current_widget_type_ == WidgetType::DRAWING) {
+        if (event->type() == QEvent::MouseButtonPress) {
+            auto* me = static_cast<QMouseEvent*>(event);
+            if (me->button() == Qt::LeftButton) {
+                is_drawing_ = true;
+                current_drawing_points_.clear();
+                current_drawing_points_.push_back(
+                    scene_view_->mapToScene(me->position().toPoint()));
+                if (drawing_preview_) {
+                    scene_->removeItem(drawing_preview_);
+                    delete drawing_preview_;
+                }
+                drawing_preview_ = scene_->addPath(
+                    QPainterPath(),
+                    QPen(Qt::black, 2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+                drawing_preview_->setZValue(100);
+                return true;
+            }
+        }
+ 
+        if (event->type() == QEvent::MouseMove && is_drawing_) {
+            auto* me = static_cast<QMouseEvent*>(event);
+            const QPointF sp = scene_view_->mapToScene(me->position().toPoint());
+            if (current_drawing_points_.empty() ||
+                QLineF(current_drawing_points_.back(), sp).length() >= 3.0) {
+                current_drawing_points_.push_back(sp);
+                QPainterPath path;
+                path.moveTo(current_drawing_points_.front());
+                for (size_t i = 1; i < current_drawing_points_.size(); ++i) {
+                    path.lineTo(current_drawing_points_[i]);
+                }
+                drawing_preview_->setPath(path);
+            }
+            return true;
+        }
+ 
+        if (event->type() == QEvent::MouseButtonRelease && is_drawing_) {
+            auto* me = static_cast<QMouseEvent*>(event);
+            if (me->button() == Qt::LeftButton) {
+                is_drawing_ = false;
+                if (drawing_preview_) {
+                    scene_->removeItem(drawing_preview_);
+                    delete drawing_preview_;
+                    drawing_preview_ = nullptr;
+                }
+                if (current_drawing_points_.size() > 1) {
+                    createDrawing(current_drawing_points_);
+                }
+                current_drawing_points_.clear();
+                return true;
+            }
+        }
+    }
+
+    if (current_widget_type_ == WidgetType::ERASER) {
+        const bool press   = event->type() == QEvent::MouseButtonPress;
+        const bool move    = event->type() == QEvent::MouseMove;
+        const bool release = event->type() == QEvent::MouseButtonRelease;
+ 
+        auto* me = static_cast<QMouseEvent*>(event);
+ 
+        if (press && me->button() == Qt::LeftButton) {
+            is_erasing_ = true;
+        }
+        if (release && me->button() == Qt::LeftButton) {
+            is_erasing_ = false;
+            return true;
+        }
+ 
+        if (is_erasing_ && (press || move)) {
+            const QPointF sp = scene_view_->mapToScene(me->position().toPoint());
+            std::vector<uint64_t> to_erase;
+            for (QGraphicsItem* item : scene_->items(sp, Qt::IntersectsItemShape)) {
+                Widget* w = dynamic_cast<Widget*>(item);
+                if (w) to_erase.push_back(w->GetId());
+            }
+            for (uint64_t id : to_erase) {
+                requestDelete(id);
+            }
+            return true;
+        }
+    }
+ 
     return QMainWindow::eventFilter(watched, event);
 }
 
@@ -274,14 +472,11 @@ void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
      }
     using namespace online_desk::board;
  
-    ActionType action = upd.action_type();
-    uint64_t widget_id = upd.widget_id();
- 
-    std::cout << "online income widget_id=" << widget_id << std::endl;
-
+    const ActionType action = upd.action_type();
+    const uint64_t widget_id = upd.widget_id();
     const WidgetInfo& info = upd.update_data();
- 
     Widget* widget_ptr = nullptr;
+    std::cout << "online income widget_id=" << widget_id << std::endl;  
 
     switch (action) {
         case (ActionType::CREATE): {
@@ -298,8 +493,9 @@ void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
  
             widget_ptr->setPosUnnotify({info.coord_x(), info.coord_y()});
             scene_->addItem(widget_ptr);
- 
-        } break;
+            break;
+        } 
+
         case (ActionType::BOARD_DELETED): {
             QMetaObject::invokeMethod(this, "onBoardDeleted", Qt::QueuedConnection);
             break;
@@ -319,8 +515,8 @@ void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
 
             scene_->removeItem(widget_ptr);
             widget_ptr->deleteLater();
-
-        } break;
+            break;
+        }
  
         case (ActionType::UPDATE): {
             std::cout << "update widget, id=" << widget_id << std::endl;
@@ -335,7 +531,7 @@ void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
                 upd_type = t;
                 upd_text = tx;
             }
- 
+            
             {
                 std::lock_guard<std::mutex> lock(widget_edit_mutex_);
                 item_exists = board_widgets_.contains(widget_id);
@@ -430,6 +626,12 @@ void BoardScreen::shutdownWorker() {
         return;
     }
     is_closing_ = true;
+
+    if (drawing_preview_) {
+        scene_->removeItem(drawing_preview_);
+        delete drawing_preview_;
+        drawing_preview_ = nullptr;
+    }
 
     if (worker_) {
         worker_->Shutdown();

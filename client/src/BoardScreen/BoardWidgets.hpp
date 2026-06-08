@@ -4,6 +4,7 @@
 #include <QGraphicsObject>
 #include <QGraphicsTextItem>
 #include <QPainter>
+#include <QPainterPath>
 #include <QStyleOption>
 #include <QMenu>
 #include <QString>
@@ -19,7 +20,10 @@ enum class WidgetType : int {
     CIRCLE = 1,   
     RECTANGLE = 2,   
     TRIANGLE = 3,  
-    TEXT = 4    
+    TEXT = 4,
+    ARROW = 5,
+    DRAWING = 6,
+    ERASER = 7
 };
 
 struct WidgetUpdate {
@@ -51,6 +55,10 @@ class Widget : public QGraphicsObject {
     WidgetType type_;
     EditableTextItem* text_item_;  
 
+    QPointF p1_, p2_;
+    QPainterPath drawing_path_;
+    QRectF cached_bounding_rect_{-50, -50, 100, 100};
+
     QRectF DeleteButtonRect() const;
 
 signals:
@@ -61,12 +69,12 @@ protected:
     QVariant itemChange(GraphicsItemChange change, const QVariant& value) override;
     void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event) override;
     void contextMenuEvent(QGraphicsSceneContextMenuEvent* event) override;
-
-private slots:
-    void onTextEditingFinished(const QString& new_text);
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
     void hoverMoveEvent(QGraphicsSceneHoverEvent* event) override;
     void hoverLeaveEvent(QGraphicsSceneHoverEvent* event) override;
+
+private slots:
+    void onTextEditingFinished(const QString& new_text);
 
 public:
     explicit Widget(uint64_t widget_id, WidgetType type = WidgetType::STICKER);
@@ -81,13 +89,15 @@ public:
     void setContentSilent(WidgetType type, const QString& text);
 
     QPointF GetCoords() const;
-    uint64_t GetId() const;
+    uint64_t GetId() const{
+        return widget_id_;
+    }
     
     WidgetType GetType() const { 
         return type_; 
     }
     
     QString GetText() const { 
-        return text_item_->toPlainText(); 
+        return text_item_ ? text_item_->toPlainText() : QString();
     }
 };
