@@ -10,12 +10,15 @@
 #include <QMetaType>
 #include <QGraphicsScene>
 #include <QGraphicsView>
+#include <QGraphicsItem>
 #include <QComboBox>
+#include <QPushButton>
 #include <memory>
 #include <queue>
 #include <random>
 #include <unordered_map>
 #include <mutex>
+#include <vector>
 
 using namespace online_desk::board;
 
@@ -33,8 +36,21 @@ class BoardScreen : public QMainWindow {
     BoardWorker* worker_;
     QGraphicsScene* scene_;
     QGraphicsView* scene_view_;
+    QGraphicsPathItem* drawing_preview_{nullptr};
     QComboBox* widget_type_selector_;
+    QPushButton* create_widget_button_{nullptr};
     WidgetType current_widget_type_{WidgetType::STICKER};
+
+    bool placing_arrow_{false};
+    QPointF arrow_start_;
+
+    bool is_drawing_{false};
+    std::vector<QPointF> current_drawing_points_;
+    uint64_t current_drawing_id_{0};
+    int drawing_points_since_last_sync_{0};
+
+    bool is_erasing_{false};
+
     std::atomic<bool> worker_shutdown_{false};
     std::atomic<bool> is_closing_{false};
 
@@ -45,12 +61,14 @@ class BoardScreen : public QMainWindow {
 private slots:
     void onBackToMenuClicked();
     void onBoardDeleted();
+    void updateToolMode();
+    void createArrow(QPointF p1, QPointF p2);
+    void createDrawing(const std::vector<QPointF>& points);
     
 protected:
     void closeEvent(QCloseEvent* event) override;    
 
 public slots:
-
     void createWidget();
     void createSnapshot();
     void deleteSelectedWidgets();
@@ -59,18 +77,15 @@ public slots:
     void zoomOut();
     void resetZoom();
     void requestUpdate(WidgetUpdate request);
-    void requestDelete(uint64_t widget_id);
-
+    void requestDelete(uint64_t widget_id); 
     void acceptBoardUpdate(BoardUpdate update);
 
 signals:
-
     void sendSessionUpdate(online_desk::board::BoardUpdate update);
     void boardClosed();
     void boardDeletedByOwner(uint64_t board_id);
 
 public:
-
     explicit BoardScreen(std::shared_ptr<GrpcBoardClient> grpc_client, uint64_t board_id, QWidget* parent = nullptr);
     ~BoardScreen();
     uint64_t getBoardId() const { return board_id_; }
