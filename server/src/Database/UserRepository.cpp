@@ -2,7 +2,7 @@
 
 #include <optional>
 #include <odb/query.hxx>
-#include "UserTable-odb.hxx"
+#include "Models-odb.hxx"
 
 namespace db {
     bool UserRepository::create(User& user) {
@@ -39,6 +39,23 @@ namespace db {
             catch (const odb::exception& e) {
                 throw;
             }
+        });
+    }
+
+    std::vector<Board> UserRepository::FindOwnedBoards(const std::string& uuid) {
+        return transaction([&](odb::transaction& t) -> std::vector<Board> {
+            auto& db = t.database();
+
+            auto user = db.find<User>(uuid);
+            
+            if (!user) {
+                return {};
+            }
+
+            using board_query = odb::query<Board>;
+            auto result = db.query<Board>(board_query::owner == user);
+
+            return {result.begin(), result.end()};
         });
     }
 }

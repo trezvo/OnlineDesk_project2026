@@ -305,7 +305,7 @@ file(WRITE ${APPLY_SCHEMA_SCRIPT}
     "> ${ODB_GEN_DIR}/combined.sql\n"
     "for ODB_FILE in ${ODB_FILES}; do\n"
     "    echo \"   Processing: $(basename $ODB_FILE)\"\n"
-    "    odb -d pgsql --generate-schema \"$ODB_FILE\" >> ${ODB_GEN_DIR}/combined.sql\n"
+    "    odb -d pgsql --at-once --generate-schema \"$ODB_FILE\" >> ${ODB_GEN_DIR}/combined.sql\n"
     "done\n"
     "echo \"Applying schema...\"\n"
     "psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} -d ${DB_NAME} -f ${ODB_GEN_DIR}/combined.sql\n"

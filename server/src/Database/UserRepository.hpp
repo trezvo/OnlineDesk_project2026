@@ -2,7 +2,7 @@
 #define USER_REPOS_HPP_
 
 #include "BaseRepository.hpp"
-#include "UserTable.hxx"
+#include "Models.hxx"
 
 #include <optional>
 
@@ -14,6 +14,7 @@ namespace db {
 
         bool create(User& user);
         std::optional<User> FindByName(const std::string& username);
+        std::vector<Board> FindOwnedBoards(const std::string& uuid);
     };
 }
 
