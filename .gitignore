@@ -1,7 +1,8 @@
 build/
 cmake-build-*/
 generated/
-demo/
+demo1/
+demo2/
 
 *.pb.h
 *.pb.cc

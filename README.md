@@ -1,14 +1,42 @@
-# OnlineDesk_project2026
+# OnlineDesk
 
-## Quick-start
-```
-# install dependanceis#
+Десктопное приложение для управления задачами. Учебный проект по C++.
 
+## О проекте
+
+Пользователь регистрируется, заходит в аккаунт и попадает на свои доски. На каждой доске можно создавать колонки — например, «В работе», «Готово» — и раскидывать по ним карточки с задачами.
+
+Приложение разделено на клиент и сервер. Клиент — это нативное Qt6 окно, которое запускается как обычная программа. Сервер работает отдельно и принимает подключения. Общаются они по gRPC: весь API описан в двух proto-файлах — `auth.proto` отвечает за регистрацию и вход, `board.proto` за всё, что связано с досками и задачами. C++ код из этих файлов генерируется автоматически при сборке через CMake.
+
+Пароли хешируются через libsodium. Все сущности — пользователи, доски, карточки — идентифицируются по UUID.
+
+Тесты лежат в отдельной папке и подключаются через CTest.
+
+## Стек
+
+Qt6, C++20, gRPC, Protobuf, libsodium, libuuid.
+
+## Сборка
+
+Зависимости: CMake 3.20+, GCC 11+ / Clang 13+, Qt6, gRPC ≥ 1.44, libsodium, libuuid.
+
+```bash
 ./script-build.sh
-./script-server-start.sh # 1-ый терминал
-
-./script-client-start.sh # 2-ой терминал
 ```
 
+## Запуск
 
+```bash
+./script-server-start.sh  # терминал 1
+./script-client-start.sh  # терминал 2
+```
 
+## Тесты
+
+```bash
+cd build && ctest --output-on-failure
+```
+
+## Участники
+
+[![Contributors](https://contrib.rocks/image?repo=trezvo/OnlineDesk_project2026)](https://github.com/trezvo/OnlineDesk_project2026/graphs/contributors)
