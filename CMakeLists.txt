@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
 find_package(Protobuf REQUIRED)
 find_package(PkgConfig REQUIRED)
+include(CTest)
 
 find_library(GRPC_REFLECTION_LIBRARY 
     NAMES grpc++_reflection
@@ -86,3 +87,7 @@ target_link_libraries(proto_generated PUBLIC
 
 add_subdirectory(client)
 add_subdirectory(server)
+
+if(BUILD_TESTING)
+    add_subdirectory(tests)
+endif()
