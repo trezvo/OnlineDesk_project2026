@@ -9,6 +9,11 @@ find_package(Protobuf REQUIRED)
 find_package(PkgConfig REQUIRED)
 include(CTest)
 
+set(ONLINE_DESK_SYSTEM_LIBRARIES pthread ${CMAKE_DL_LIBS})
+if(NOT APPLE)
+    list(APPEND ONLINE_DESK_SYSTEM_LIBRARIES rt)
+endif()
+
 find_library(GRPC_REFLECTION_LIBRARY 
     NAMES grpc++_reflection
     PATHS /usr/local/lib
@@ -77,9 +82,7 @@ target_link_libraries(proto_generated PUBLIC
     ${GRPC_LIBRARIES}
     ${GRPC_REFLECTION_LIBRARY}
     ${Protobuf_LIBRARIES}
-    pthread
-    dl
-    rt
+    ${ONLINE_DESK_SYSTEM_LIBRARIES}
 )
 
 # message(STATUS "GRPC_LIBRARIES = ${GRPC_LIBRARIES}")
