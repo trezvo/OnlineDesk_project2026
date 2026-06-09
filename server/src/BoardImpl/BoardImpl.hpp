@@ -14,38 +14,33 @@
 #include "SessionImpl/SessionManager.hpp"
 #include "board.grpc.pb.h"
 #include "board.pb.h"
+#include "Database/BoardRepository.hpp"
+#include "Database/UserRepository.hpp"
+#include "Database/WidgetRepository.hpp"
 
 namespace board_module {
 
 namespace contracts = online_desk::board;
 
-class BoardsDataBase {
-
-    mutable std::mutex db_edit_mutex_;
-    std::unordered_map<uint64_t, std::string> boards_;
-
-public:
-    void SetBoard(uint64_t board_id, std::string board_name);
-    std::optional<std::string> GetBoard(uint64_t board_id) const;
-    bool RenameBoard(uint64_t board_id, std::string new_board_name);
-    bool DeleteBoard(uint64_t board_id);
-
-};
-
 class BoardServiceImpl final : public contracts::BoardService::WithCallbackMethod_SubscribeBoard<contracts::BoardService::Service> {
     std::shared_ptr<auth_module::AuthenticationServiceImpl> auth_impl_;
-    BoardsDataBase data_base_;
+    std::shared_ptr<db::BoardRepository> board_table_;
+    std::shared_ptr<db::UserRepository> user_table_;
+    std::shared_ptr<db::WidgetRepository> widget_table;
     std::mt19937_64 create_rand_64_;
-    std::unordered_map<std::string, std::vector<uint64_t>> user_owned_boards_;
     SessionManager session_manager_;
 
 public:
     explicit BoardServiceImpl(
-        std::shared_ptr<auth_module::AuthenticationServiceImpl> auth_impl
-    );
+        std::shared_ptr<auth_module::AuthenticationServiceImpl> auth_impl,
+        std::shared_ptr<ODBConnectionManager> conn_pool
+    ) : auth_impl_(auth_impl), 
+    user_table_(std::make_shared<db::UserRepository>(conn_pool)), 
+    board_table_(std::make_shared<db::BoardRepository>(conn_pool)),
+    widget_table(std::make_shared<db::WidgetRepository>(conn_pool)),
+    session_manager_(widget_table, board_table_) {}
+    
     ~BoardServiceImpl() override;
-
-    std::string GetBoardName(uint64_t board_id) const;
 
     grpc::Status FetchUserBoards(
         grpc::ServerContext *context,

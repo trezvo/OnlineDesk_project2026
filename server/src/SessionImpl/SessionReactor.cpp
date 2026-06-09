@@ -24,16 +24,16 @@ SessionReactor::SessionReactor(grpc::CallbackServerContext* context, SessionMana
         contracts::BoardUpdate response;
 
         for (uint64_t widget_id : session_instance_->widgets_storage_) {
-            WidgetsRead widget = manager_.GetWidget(widget_id);
+            const db::Widget widget = manager_.GetWidget(widget_id);
 
             response.set_action_type(online_desk::board::CREATE);
-            response.set_widget_id(widget.widget_id);
+            response.set_widget_id(widget.id());
             response.set_user_token(0);
 
             contracts::WidgetInfo* diff = response.mutable_update_data();
-            diff->set_coord_x(widget.x);
-            diff->set_coord_y(widget.y);
-            diff->set_content(widget.content);
+            diff->set_coord_x(widget.x());
+            diff->set_coord_y(widget.y());
+            diff->set_content(widget.content());
             ProcessMessage(response);
         }
 
@@ -56,25 +56,22 @@ void SessionReactor::Broadcast(const contracts::BoardUpdate &request) {
             return;
         } break;
         case (online_desk::board::CREATE): {
-            manager_.AddWidget(
+            manager_.AddWidget(db::Widget(
                 request.widget_id(),
-                {
-                session_instance_->board_id_,
                 request.update_data().coord_x(), 
                 request.update_data().coord_y(),
-                request.update_data().content()
-                }
+                request.update_data().content(),
+                nullptr), session_instance_->board_id_
             );
             session_instance_->widgets_storage_.insert(request.widget_id());
         } break;
         case (online_desk::board::UPDATE): {
-            manager_.UpdateWidget(
+            manager_.UpdateWidget(db::Widget(
                 request.widget_id(),
-                {
                 request.update_data().coord_x(),
                 request.update_data().coord_y(),
-                request.update_data().content()
-                }
+                request.update_data().content(),
+                nullptr), session_instance_->board_id_
             );
         } break;
         case (online_desk::board::DELETE): {

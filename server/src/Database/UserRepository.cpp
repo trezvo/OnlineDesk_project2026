@@ -42,20 +42,25 @@ namespace db {
         });
     }
 
-    std::vector<Board> UserRepository::FindOwnedBoards(const std::string& uuid) {
-        return transaction([&](odb::transaction& t) -> std::vector<Board> {
-            auto& db = t.database();
+        std::vector<Board> UserRepository::FindOwnedBoards(const std::string& uuid) {
+            return transaction([&](odb::transaction& t) -> std::vector<Board> {
+                auto& db = t.database();
 
-            auto user = db.find<User>(uuid);
-            
-            if (!user) {
-                return {};
-            }
+                auto user = db.find<User>(uuid);
+                
+                if (!user) {
+                    return {};
+                }
 
-            using board_query = odb::query<Board>;
-            auto result = db.query<Board>(board_query::owner == user);
+                using board_query = odb::query<Board>;
+                auto result = db.query<Board>(board_query::owner->uuid == user->uuid());
 
-            return {result.begin(), result.end()};
-        });
-    }
+                std::vector<Board> out;
+                for (Board& board : result) {
+                    out.push_back(std::move(board));
+                }
+
+                return out;
+            });
+        }
 }

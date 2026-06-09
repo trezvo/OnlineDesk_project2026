@@ -1,3 +1,8 @@
+cmake_minimum_required(VERSION 3.10)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 # ===== ВАЖНО: SERVER_ROOT должен указывать на текущую директорию =====
 set(SERVER_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -85,7 +90,7 @@ foreach(ODB_FILE ${ODB_FILES})
     message(STATUS "  - ${ODB_FILE}")
 endforeach()
 
-# ===== ГЕНЕРАЦИЯ ODB КОДА (без --schema-file) =====
+# ===== ГЕНЕРАЦИЯ ODB КОДА =====
 file(MAKE_DIRECTORY ${ODB_GEN_DIR})
 set(ODB_GENERATED_SRCS "")
 
@@ -100,8 +105,9 @@ foreach(ODB_FILE ${ODB_FILES})
     add_custom_command(
         OUTPUT ${ODB_HDR} ${ODB_SRC}
         COMMAND odb -d pgsql 
+                --std c++20
                 --generate-query 
-                --generate-schema
+                --generate-session
                 -I${SERVER_ROOT}
                 --output-dir ${ODB_GEN_DIR}
                 ${ODB_FILE}
@@ -110,8 +116,13 @@ foreach(ODB_FILE ${ODB_FILES})
         VERBATIM
     )
     
-    list(APPEND ODB_GENERATED_SRCS ${ODB_SRC} ${ODB_HDR})
+    list(APPEND ODB_GENERATED_SRCS ${ODB_SRC})
 endforeach()
+
+# Если нет файлов для генерации, создаём пустой список
+if(NOT ODB_GENERATED_SRCS)
+    message(FATAL_ERROR "No ODB sources generated")
+endif()
 
 # ===== БИБЛИОТЕКА ODB =====
 add_library(odb_generated STATIC ${ODB_GENERATED_SRCS})
@@ -141,100 +152,32 @@ set(DB_NAME "desk_db" CACHE STRING "PostgreSQL database name")
 set(DB_USER "desk_admin" CACHE STRING "PostgreSQL user")
 set(DB_PASSWORD "desk_admin" CACHE STRING "PostgreSQL password")
 
-# ===== СОЗДАНИЕ ОБЪЕДИНЕННОЙ СХЕМЫ =====
-set(COMBINED_SCHEMA "${ODB_GEN_DIR}/combined_schema.sql")
+set(CREATE_TABLE_SQL "${ODB_GEN_DIR}/Models.sql")
 
-# Команда для объединения всех .sql файлов
+# ===== ГЕНЕРАЦИЯ SQL СХЕМЫ =====
+find_program(ODB_COMPILER odb REQUIRED)
+
+# Генерируем SQL из всех ODB файлов
 add_custom_command(
-    OUTPUT ${COMBINED_SCHEMA}
-    COMMAND ${CMAKE_COMMAND} -E echo "-- Combined ODB Schema" > ${COMBINED_SCHEMA}
-    COMMAND ${CMAKE_COMMAND} -E echo "-- Generated automatically from ODB models" >> ${COMBINED_SCHEMA}
-    COMMAND ${CMAKE_COMMAND} -E echo "" >> ${COMBINED_SCHEMA}
-    COMMAND ${CMAKE_COMMAND} -E echo "DROP SCHEMA public CASCADE;" >> ${COMBINED_SCHEMA}
-    COMMAND ${CMAKE_COMMAND} -E echo "CREATE SCHEMA public;" >> ${COMBINED_SCHEMA}
-    COMMAND ${CMAKE_COMMAND} -E echo "" >> ${COMBINED_SCHEMA}
-    COMMAND for f in ${ODB_GEN_DIR}/*.sql; do echo "-- $$(basename $$f)"; cat $$f; echo ""; done >> ${COMBINED_SCHEMA}
-    DEPENDS ${ODB_GENERATED_SRCS}
-    COMMENT "Combining ODB schema files"
+    OUTPUT ${CREATE_TABLE_SQL}
+    COMMAND ${ODB_COMPILER} 
+        -d pgsql              
+        --std c++20
+        --generate-schema-only
+        --schema-format sql
+        --at-once
+        ${ODB_FILES}
+    DEPENDS ${ODB_FILES}
+    COMMENT "Generating database schema SQL from ODB models..."
     VERBATIM
 )
 
-# Альтернативный способ без цикла в shell
-add_custom_command(
-    OUTPUT ${COMBINED_SCHEMA}.tmp
-    COMMAND ${CMAKE_COMMAND} -E echo "-- Combined ODB Schema" > ${COMBINED_SCHEMA}
-    COMMAND ${CMAKE_COMMAND} -E echo "-- Generated automatically from ODB models" >> ${COMBINED_SCHEMA}
-    COMMAND ${CMAKE_COMMAND} -E echo "" >> ${COMBINED_SCHEMA}
-    DEPENDS ${ODB_GENERATED_SRCS}
-)
-
-# ===== ЦЕЛЬ ДЛЯ АВТОМАТИЧЕСКОГО ПРИМЕНЕНИЯ СХЕМЫ =====
-# Создаем скрипт для полной настройки БД
-set(DB_SETUP_SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/setup_database.sh")
-
-file(WRITE ${DB_SETUP_SCRIPT} 
-    "#!/bin/bash\n"
-    "# Auto-setup script for ODB database\n\n"
-    "set -e\n\n"
-    "echo \"==========================================\"\n"
-    "echo \"Setting up database for ODB\"\n"
-    "echo \"==========================================\"\n\n"
-    "export PGPASSWORD=\"${DB_PASSWORD}\"\n\n"
-    "# 1. Проверка/создание базы данных\n"
-    "echo \"1. Checking database...\"\n"
-    "if psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} -lqt | cut -d \\| -f 1 | grep -qw \"${DB_NAME}\"; then\n"
-    "    echo \"   Database ${DB_NAME} already exists\"\n"
-    "else\n"
-    "    echo \"   Creating database ${DB_NAME}...\"\n"
-    "    createdb -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} ${DB_NAME}\n"
-    "    echo \"   ✅ Database created\"\n"
-    "fi\n\n"
-    "# 2. Генерация схемы из ODB\n"
-    "echo \"2. Generating schema from ODB models...\"\n"
-    "cd ${CMAKE_CURRENT_SOURCE_DIR}\n"
-    "for ODB_FILE in ${ODB_FILES}; do\n"
-    "    echo \"   Processing: $(basename $ODB_FILE)\"\n"
-    "    odb -d pgsql --generate-schema \"$ODB_FILE\" > \"${ODB_GEN_DIR}/$(basename ${ODB_FILE} .hxx).sql\"\n"
-    "done\n\n"
-    "# 3. Объединение всех схем\n"
-    "echo \"3. Combining schema files...\"\n"
-    "cat ${ODB_GEN_DIR}/*.sql > ${ODB_GEN_DIR}/full_schema.sql\n\n"
-    "# 4. Применение схемы\n"
-    "echo \"4. Applying schema to database...\"\n"
-    "psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} -d ${DB_NAME} -f ${ODB_GEN_DIR}/full_schema.sql\n\n"
-    "echo \"\"\n"
-    "echo \"==========================================\"\n"
-    "echo \"✅ Database setup complete!\"\n"
-    "echo \"==========================================\"\n"
-)
-
-file(CHMOD ${DB_SETUP_SCRIPT} PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE)
-
-# ===== ПАРАМЕТРЫ ПОДКЛЮЧЕНИЯ =====
-set(DB_HOST "localhost" CACHE STRING "PostgreSQL host")
-set(DB_PORT "5432" CACHE STRING "PostgreSQL port")
-set(DB_NAME "desk_db" CACHE STRING "PostgreSQL database name")
-set(DB_USER "desk_admin" CACHE STRING "PostgreSQL user")
-set(DB_PASSWORD "desk_admin" CACHE STRING "PostgreSQL password")
-
-# ===== СОЗДАНИЕ SQL СКРИПТА ДЛЯ ТАБЛИЦЫ =====
-set(CREATE_TABLE_SQL "${CMAKE_CURRENT_BINARY_DIR}/create_table.sql")
-
-file(WRITE ${CREATE_TABLE_SQL} 
-    "CREATE TABLE IF NOT EXISTS \"User\" (\n"
-    "    \"id\" BIGSERIAL NOT NULL PRIMARY KEY,\n"
-    "    \"uuid\" TEXT NOT NULL UNIQUE,\n"
-    "    \"username\" TEXT NOT NULL UNIQUE,\n"
-    "    \"password\" TEXT NOT NULL\n"
-    ");\n"
-    "\n"
-    "CREATE INDEX IF NOT EXISTS \"idx_User_username\" ON \"User\" (\"username\");\n"
-    "CREATE INDEX IF NOT EXISTS \"idx_User_uuid\" ON \"User\" (\"uuid\");\n"
-)
+add_custom_target(generate_schema DEPENDS ${CREATE_TABLE_SQL})
 
 # ===== СОЗДАНИЕ SH СКРИПТА =====
 set(DB_SETUP_SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/setup_db.sh")
 
+# Создаём скрипт настройки БД
 file(WRITE ${DB_SETUP_SCRIPT} 
     "#!/bin/bash\n"
     "# Database auto-setup script\n\n"
@@ -251,10 +194,10 @@ file(WRITE ${DB_SETUP_SCRIPT}
     "else\n"
     "    echo \"✅ Database '${DB_NAME}' already exists\"\n"
     "fi\n\n"
-    "# Create table\n"
-    "echo \"Creating table 'User'...\"\n"
+    "# Apply schema\n"
+    "echo \"Applying schema...\"\n"
     "psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} -d ${DB_NAME} -f ${CREATE_TABLE_SQL}\n"
-    "echo \"✅ Table created\"\n\n"
+    "echo \"✅ Schema applied\"\n\n"
     "# Show tables\n"
     "echo \"\"\n"
     "echo \"Current tables:\"\n"
@@ -268,64 +211,24 @@ file(WRITE ${DB_SETUP_SCRIPT}
 # Делаем скрипт исполняемым
 file(CHMOD ${DB_SETUP_SCRIPT} PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE)
 
-# ===== ВАРИАНТ 1: Выполнение во время конфигурации =====
-execute_process(
-    COMMAND bash ${DB_SETUP_SCRIPT}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    RESULT_VARIABLE setup_result
-    OUTPUT_VARIABLE setup_output
-    ERROR_VARIABLE setup_error
-)
-
-if(setup_result EQUAL 0)
-    message(STATUS "✅ Database setup successful")
-    message(STATUS "${setup_output}")
-else()
-    message(WARNING "Database setup failed: ${setup_error}")
-    message(STATUS "You can run manually: bash ${DB_SETUP_SCRIPT}")
-endif()
-
-
 # Цель для настройки БД
-add_custom_target(setup_database
-    COMMAND ${DB_SETUP_SCRIPT}
-    COMMENT "Setting up database (create + schema)"
-)
 
-# Цель для применения схемы (без пересоздания БД)
-set(APPLY_SCHEMA_SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/apply_schema.sh")
-
-file(WRITE ${APPLY_SCHEMA_SCRIPT} 
-    "#!/bin/bash\n"
-    "# Apply only schema (database must exist)\n\n"
-    "set -e\n\n"
-    "export PGPASSWORD=\"${DB_PASSWORD}\"\n\n"
-    "echo \"Generating and applying schema...\"\n"
-    "cd ${CMAKE_CURRENT_SOURCE_DIR}\n"
-    "> ${ODB_GEN_DIR}/combined.sql\n"
-    "for ODB_FILE in ${ODB_FILES}; do\n"
-    "    echo \"   Processing: $(basename $ODB_FILE)\"\n"
-    "    odb -d pgsql --at-once --generate-schema \"$ODB_FILE\" >> ${ODB_GEN_DIR}/combined.sql\n"
-    "done\n"
-    "echo \"Applying schema...\"\n"
-    "psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} -d ${DB_NAME} -f ${ODB_GEN_DIR}/combined.sql\n"
-    "echo \"✅ Schema applied\"\n"
-)
-
-file(CHMOD ${APPLY_SCHEMA_SCRIPT} PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE)
-
-add_custom_target(apply_schema
-    COMMAND ${APPLY_SCHEMA_SCRIPT}
-    DEPENDS ${ODB_GENERATED_SRCS}
-    COMMENT "Applying ODB schema to database"
-)
+# ===== УДАЛЯЕМ execute_process (он выполняется при конфигурации) =====
+# Вместо execute_process используем custom_target
 
 # ===== ОСНОВНОЙ ИСПОЛНЯЕМЫЙ ФАЙЛ =====
+# Проверяем, есть ли исходники
 if(NOT SERVER_SOURCES)
     message(WARNING "No server sources found, creating minimal main.cpp")
-    file(WRITE "${SERVER_ROOT}/src/main.cpp" 
-        "#include <iostream>\nint main() {\n    std::cout << \"Server starting...\\n\";\n    return 0;\n}\n")
-    set(SERVER_SOURCES "${SERVER_ROOT}/src/main.cpp")
+    set(SERVER_MAIN "${SERVER_ROOT}/src/main.cpp")
+    file(WRITE ${SERVER_MAIN} 
+        "#include <iostream>\n"
+        "#include <odb/pgsql/database.hxx>\n\n"
+        "int main() {\n"
+        "    std::cout << \"Server starting...\\n\";\n"
+        "    return 0;\n"
+        "}\n")
+    set(SERVER_SOURCES ${SERVER_MAIN})
 endif()
 
 message(STATUS "Server sources count: ${SERVER_SOURCES}")
@@ -380,6 +283,7 @@ target_compile_options(desk_server PRIVATE
     ${Sodium_CFLAGS_OTHER}
     -Wall
     -Wextra
+    -std=c++20 
 )
 
 target_compile_definitions(desk_server PRIVATE
@@ -387,7 +291,7 @@ target_compile_definitions(desk_server PRIVATE
 )
 
 # ===== ЗАВИСИМОСТИ =====
-add_dependencies(desk_server odb_generated)
+add_dependencies(desk_server odb_generated generate_schema)
 
 if(HAVE_PROTO)
     add_dependencies(desk_server proto_generated)
@@ -404,10 +308,9 @@ message(STATUS "  Database: ${DB_NAME} on ${DB_HOST}:${DB_PORT} as ${DB_USER}")
 message(STATUS "=========================================")
 message(STATUS "Database setup targets:")
 message(STATUS "  make setup_database  - Full setup (create DB + schema)")
-message(STATUS "  make apply_schema    - Apply schema only (DB must exist)")
 message(STATUS "=========================================")
 message(STATUS "Usage:")
 message(STATUS "  1. First time: make setup_database")
 message(STATUS "  2. Normal build: make desk_server")
-message(STATUS "  3. After model changes: make apply_schema && make desk_server")
+message(STATUS "  3. After model changes: make setup_database && make desk_server")
 message(STATUS "=========================================")

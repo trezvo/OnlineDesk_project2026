@@ -31,7 +31,9 @@ void runServer(const std::string &server_address) {
     auto authentication_service =
         std::make_shared<auth_module::AuthenticationServiceImpl>(database_connection_pool);
     auto board_service =
-        std::make_shared<board_module::BoardServiceImpl>(authentication_service
+        std::make_shared<board_module::BoardServiceImpl>(
+            authentication_service, 
+            database_connection_pool
         );
 
     grpc::EnableDefaultHealthCheckService(true);
