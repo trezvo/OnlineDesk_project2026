@@ -3,15 +3,15 @@
 #include <memory>
 #include <iostream>
 
-SessionReactor::SessionReactor(BoardService::Stub* stub_, std::unique_ptr<grpc::ClientContext> context, BoardWorkerInterface* worker)
+SessionReactor::SessionReactor(BoardService::Stub* stub, std::unique_ptr<grpc::ClientContext> context, BoardWorkerInterface* worker)
     : is_running_(true)
     , board_worker_(worker)
     , is_writing_(false)  {
         
-    stub_->async()->SubscribeBoard(context.get(), this);
+    stub->async()->SubscribeBoard(context.get(), this);
 
     StartCall();
-    StartRead(&read_buffer_);
+    StartRead(read_buffer_.get());
 }
 
 void SessionReactor::AddUpdate(BoardUpdate request) {
@@ -19,50 +19,61 @@ void SessionReactor::AddUpdate(BoardUpdate request) {
         return;
     }
 
-    std::cout << "entered 'AddUpdate'..." << std::endl;
+    // std::cout << "entered 'AddUpdate'..." << std::endl;
     {
         std::lock_guard<std::mutex> lock(write_queue_mutex_);
-        write_queue_.push(std::move(request));
+        write_queue_.push(std::make_unique<BoardUpdate>(std::move(request)));
     }
     ProcessQueue();
 
-    std::cout << "'AddUpdate' freed!" << std::endl;
+    // std::cout << "'AddUpdate' freed!" << std::endl;
 }
 
 void SessionReactor::ProcessQueue() {
-    if (!is_running_ || is_writing_.exchange(true)) {
+    std::unique_lock<std::mutex> lock(write_queue_mutex_);
+
+    if (!is_running_ || is_writing_ || write_queue_.empty()) {
         return;
     }
 
-    {
-        std::unique_lock<std::mutex> lock(write_queue_mutex_);
+    is_writing_ = true; 
 
-        if (write_queue_.empty()) {
-            is_writing_ = false;
-            return;
-        }
+    write_buffer_ = std::move(write_queue_.front());
+    write_queue_.pop();
 
-        write_buffer_ = std::move(write_queue_.front());
-        write_queue_.pop();
-    }
+    BoardUpdate* buffer_ptr = write_buffer_.get();
 
-    StartWrite(&write_buffer_);
+    lock.unlock();
+
+    StartWrite(buffer_ptr);
 }
 
 void SessionReactor::OnWriteDone(bool ok) {
-    if (!is_running_ or !ok) {
+    std::unique_lock<std::mutex> lock(write_queue_mutex_);
+    
+    if (!is_running_) {
         return;
     }
-
-    std::cout << "outcome bidi update" << std::endl;
-    is_writing_ = false;
-
+    
     if (!ok) {
         Shutdown();
         return;
     }
-
-    ProcessQueue();
+    
+    write_buffer_.reset();
+    is_writing_ = false;
+    
+    if (!write_queue_.empty() && is_running_) {
+        is_writing_ = true;
+        write_buffer_ = std::move(write_queue_.front());
+        write_queue_.pop();
+        
+        BoardUpdate* buffer_ptr = write_buffer_.get();
+        
+        lock.unlock();
+        
+        StartWrite(buffer_ptr);
+    }
 }
 
 void SessionReactor::OnReadDone(bool ok) {
@@ -76,9 +87,12 @@ void SessionReactor::OnReadDone(bool ok) {
     }
 
     if (board_worker_) {
-        board_worker_->addUpdate(std::move(read_buffer_));
+        BoardUpdate tmp = *read_buffer_.release();
+        board_worker_->addUpdate(std::move(tmp));
+        read_buffer_ = std::make_unique<BoardUpdate>();
     }
-    StartRead(&read_buffer_);
+
+    StartRead(read_buffer_.get());
 }
 
 void SessionReactor::OnDone(const grpc::Status& status) {

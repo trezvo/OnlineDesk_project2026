@@ -1,5 +1,7 @@
 #include "SessionManager.hpp"
 #include "SessionInstance.hpp"
+#include <memory>
+#include <iostream>
 
 namespace board_module {
 
@@ -24,42 +26,50 @@ void SessionManager::CloseSession(uint64_t board_id) {
     }
 }
 
-uint64_t SessionManager::MakeBoardSnapshot(uint64_t board_id) {
-    uint64_t new_board_id = create_rand_64_();
+uint64_t SessionManager::MakeBoardSnapshot(uint64_t old_board_id, const std::string& user_uuid) {
+    try {
+        return widget_table_->createSnapshot(old_board_id, user_uuid);
+    }
+    catch (const odb::exception& e) {
+        std::cout << "create snapshot: " << e.what() << std::endl;
+        return 0;
+    }
+    catch (...) {
+        std::cout << "create snapshot: board not found" << std::endl;
+        return 0;
+    }
+}
 
-    auto widgets_on_board = widgets_db_.SelectFromBoard(board_id);
 
-    for (WidgetsRead read : widgets_on_board) {
-        widgets_db_.Post(
-            create_rand_64_(), { new_board_id, read.x, read.y });
+std::vector<db::Widget> SessionManager::GetBoardsWidgets(uint64_t board_id) {
+    return widget_table_->findAllOnBoard(board_id);
+}
+
+db::Widget SessionManager::GetWidget(uint64_t widget_id) {
+    auto widget_query =  widget_table_->findById(widget_id);
+    
+    if (!widget_query.has_value()) {
+        return {};
     }
 
-    return new_board_id;
+    return widget_query.value();
 }
 
+void SessionManager::AddWidget(db::Widget widget, uint64_t board_id) {
+    try {widget_table_->create(widget, board_id); }
+    catch (const odb::exception& e) { 
+        std::cout << e.what() << std::endl;
+    }
 
-std::vector<WidgetsRead> SessionManager::GetBoardsWidgets(uint64_t board_id) {
-    return widgets_db_.SelectFromBoard(board_id);
+    
 }
 
-WidgetsRead SessionManager::GetWidget(uint64_t widget_id) {
-    return widgets_db_.Get(widget_id);
-}
-
-void SessionManager::AddWidget(uint64_t widget_id, WidgetsPost body) {
-    widgets_db_.Post(widget_id, std::move(body));
-}
-
-void SessionManager::UpdateWidget(uint64_t widget_id, WidgetsUpdate body) {
-    widgets_db_.Update(widget_id, std::move(body));
+void SessionManager::UpdateWidget(db::Widget widget, uint64_t board_id) {
+    widget_table_->update(widget, board_id);
 }
 
 void SessionManager::DeleteWidget(uint64_t widget_id) {
-    widgets_db_.Delete(widget_id);   
-}
-
-void SessionManager::DeleteBoardWidgets(uint64_t board_id) {
-    widgets_db_.DeleteByBoardId(board_id);
+    widget_table_->remove(widget_id);   
 }
 
 void SessionManager::BroadcastToSession(uint64_t board_id, const contracts::BoardUpdate& message) {

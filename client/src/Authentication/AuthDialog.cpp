@@ -3,6 +3,7 @@
 #include <QFormLayout>
 #include <QHBoxLayout>
 #include <QMessageBox>
+#include <iostream>
 
 AuthDialog::AuthDialog(std::shared_ptr<GrpcBoardClient> client, QWidget* parent)
     : QDialog(parent)
@@ -84,6 +85,8 @@ void AuthDialog::setupUI() {
     connect(cancel_button_, &QPushButton::clicked, this, &QDialog::reject);
     connect(username_edit_, &QLineEdit::returnPressed, this, &AuthDialog::onLoginClicked);
     connect(password_edit_, &QLineEdit::returnPressed, this, &AuthDialog::onLoginClicked);
+
+    // std::cout << "Login dialog set up" << std::endl;
 }
 
 void AuthDialog::onLoginClicked() {

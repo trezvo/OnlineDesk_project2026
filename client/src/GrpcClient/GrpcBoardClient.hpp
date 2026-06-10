@@ -73,6 +73,7 @@ public:
 
 private:
 
+    std::shared_ptr<grpc::Channel> channel_;
     std::unique_ptr<online_desk::auth::AuthenticationService::Stub> auth_stub_;
     std::unique_ptr<online_desk::board::BoardService::Stub> board_stub_;
 

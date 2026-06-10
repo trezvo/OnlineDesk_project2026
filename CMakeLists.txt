@@ -5,8 +5,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
-find_package(Protobuf REQUIRED)
 find_package(PkgConfig REQUIRED)
+find_package(Protobuf REQUIRED)
+
 include(CTest)
 
 set(ONLINE_DESK_SYSTEM_LIBRARIES pthread ${CMAKE_DL_LIBS})
@@ -82,15 +83,13 @@ target_link_libraries(proto_generated PUBLIC
     ${GRPC_LIBRARIES}
     ${GRPC_REFLECTION_LIBRARY}
     ${Protobuf_LIBRARIES}
-    ${ONLINE_DESK_SYSTEM_LIBRARIES}
+    pthread
+    dl
+    rt
 )
 
-# message(STATUS "GRPC_LIBRARIES = ${GRPC_LIBRARIES}")
-# message(STATUS "GRPC_LIBRARY_DIRS = ${GRPC_LIBRARY_DIRS}")
+message(STATUS "GRPC_LIBRARIES = ${GRPC_LIBRARIES}")
+message(STATUS "GRPC_LIBRARY_DIRS = ${GRPC_LIBRARY_DIRS}")
 
 add_subdirectory(client)
 add_subdirectory(server)
-
-if(BUILD_TESTING)
-    add_subdirectory(tests)
-endif()

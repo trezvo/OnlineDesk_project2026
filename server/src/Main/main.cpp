@@ -6,6 +6,7 @@
 #include <iostream>
 #include "AuthenticationImpl/AuthenticationImpl.hpp"
 #include "BoardImpl/BoardImpl.hpp"
+#include "Database/ConnectionManager.hpp"
 
 std::unique_ptr<grpc::Server> g_server;
 
@@ -16,10 +17,23 @@ void stopServer(int) {
 }
 
 void runServer(const std::string &server_address) {
+
+    const ODBConnectionManager::ConnectionConfig conf{
+        "desk_admin",
+        "desk_admin",
+        "desk_db",
+        "db",
+        5432
+    };
+
+    auto database_connection_pool = std::make_shared<ODBConnectionManager>(20, conf);
+
     auto authentication_service =
-        std::make_shared<auth_module::AuthenticationServiceImpl>();
+        std::make_shared<auth_module::AuthenticationServiceImpl>(database_connection_pool);
     auto board_service =
-        std::make_shared<board_module::BoardServiceImpl>(authentication_service
+        std::make_shared<board_module::BoardServiceImpl>(
+            authentication_service, 
+            database_connection_pool
         );
 
     grpc::EnableDefaultHealthCheckService(true);

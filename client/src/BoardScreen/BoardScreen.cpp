@@ -45,7 +45,7 @@ BoardScreen::~BoardScreen() = default;
 void BoardScreen::SetupUI() {
 
     setWindowTitle(QString::fromStdString("Board № " + std::to_string(board_id_)));
-    resize(900, 600);
+    resize(1000, 600);
 
     setCentralWidget(scene_view_);
 
@@ -123,13 +123,13 @@ void BoardScreen::SetupUI() {
     connect(worker_thread, &QThread::started, worker_, &BoardWorker::runWorking);
     connect(worker_, &BoardWorker::printUpdate, this, &BoardScreen::acceptBoardUpdate);
 
-    std::cout << this->thread() << ' ' << worker_->thread() <<  std::endl;
+    // std::cout << this->thread() << ' ' << worker_->thread() <<  std::endl;
 
     scene_view_->show();
     worker_thread->start();
 
     if (!worker_thread->isRunning()) {
-        std::cout << "does not running" << std::endl;
+        // std::cout << "does not running" << std::endl;
     }
 }
 
@@ -466,7 +466,7 @@ bool BoardScreen::eventFilter(QObject* watched, QEvent* event) {
 }
 
 void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
-    std::cout << "acceptBoardUpdate action=" << upd.action_type() << std::endl;
+    // std::cout << "acceptBoardUpdate action=" << upd.action_type() << std::endl;
      if (is_closing_ && upd.action_type() != online_desk::board::BOARD_DELETED){
         return;
      }
@@ -476,11 +476,11 @@ void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
     const uint64_t widget_id = upd.widget_id();
     const WidgetInfo& info = upd.update_data();
     Widget* widget_ptr = nullptr;
-    std::cout << "online income widget_id=" << widget_id << std::endl;  
+    // std::cout << "online income widget_id=" << widget_id << std::endl;  
 
     switch (action) {
         case (ActionType::CREATE): {
-            std::cout << "create widget, id=" << widget_id << std::endl;
+            // std::cout << "create widget, id=" << widget_id << std::endl;
  
             const auto [type, text] = Widget::DecodeContent(info.content());
             widget_ptr = ProduceWidget(widget_id, type);
@@ -519,7 +519,7 @@ void BoardScreen::acceptBoardUpdate(BoardUpdate upd) {
         }
  
         case (ActionType::UPDATE): {
-            std::cout << "update widget, id=" << widget_id << std::endl;
+            // std::cout << "update widget, id=" << widget_id << std::endl;
  
             bool item_exists = true;
  
@@ -584,7 +584,7 @@ void BoardScreen::requestUpdate(WidgetUpdate upd) {
 
     worker_->sendSessionUpdate(std::move(request));
 
-    std::cout << "after emit" <<std::endl;
+    // std::cout << "after emit" <<std::endl;
 }
 
 

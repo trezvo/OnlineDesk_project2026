@@ -1,7 +1,6 @@
 #include "SessionReactor.hpp"
 #include "SessionInstance.hpp"
 #include "SessionManager.hpp"
-#include "WidgetsDataBase/WidgetsDB.hpp"
 
 namespace board_module {
 
@@ -24,22 +23,22 @@ SessionReactor::SessionReactor(grpc::CallbackServerContext* context, SessionMana
         contracts::BoardUpdate response;
 
         for (uint64_t widget_id : session_instance_->widgets_storage_) {
-            WidgetsRead widget = manager_.GetWidget(widget_id);
+            const db::Widget widget = manager_.GetWidget(widget_id);
 
             response.set_action_type(online_desk::board::CREATE);
-            response.set_widget_id(widget.widget_id);
+            response.set_widget_id(widget.id());
             response.set_user_token(0);
 
             contracts::WidgetInfo* diff = response.mutable_update_data();
-            diff->set_coord_x(widget.x);
-            diff->set_coord_y(widget.y);
-            diff->set_content(widget.content);
+            diff->set_coord_x(widget.x());
+            diff->set_coord_y(widget.y());
+            diff->set_content(widget.content());
             ProcessMessage(response);
         }
 
     }
 
-    std::cout << "session reactor succesfuly init for board id=" << board_id << std::endl;
+    // std::cout << "session reactor succesfuly init for board id=" << board_id << std::endl;
     
     StartRead(&request_);
 }
@@ -50,31 +49,34 @@ void SessionReactor::Broadcast(const contracts::BoardUpdate &request) {
 
     online_desk::board::ActionType action = request.action_type();
 
+    // std::cout << "content: " << request.update_data().content() << std::endl;
+
     switch (action) {
         case (online_desk::board::EXIT): {
             Shutdown();
             return;
         } break;
         case (online_desk::board::CREATE): {
-            manager_.AddWidget(
+            manager_.AddWidget(db::Widget(
                 request.widget_id(),
-                {
-                session_instance_->board_id_,
                 request.update_data().coord_x(), 
                 request.update_data().coord_y(),
-                request.update_data().content()
-                }
+                request.update_data().content(),
+                nullptr), session_instance_->board_id_
             );
             session_instance_->widgets_storage_.insert(request.widget_id());
         } break;
         case (online_desk::board::UPDATE): {
-            manager_.UpdateWidget(
+            if (!session_instance_->widgets_storage_.contains(request.widget_id())) {
+                return;
+            }
+
+            manager_.UpdateWidget(db::Widget(
                 request.widget_id(),
-                {
                 request.update_data().coord_x(),
                 request.update_data().coord_y(),
-                request.update_data().content()
-                }
+                request.update_data().content(),
+                nullptr), session_instance_->board_id_
             );
         } break;
         case (online_desk::board::DELETE): {
@@ -92,7 +94,7 @@ void SessionReactor::Broadcast(const contracts::BoardUpdate &request) {
 
     uint64_t widget_id = request.widget_id();
 
-    std::cout << "income update: id=" << widget_id << std::endl;
+    // std::cout << "income update: id=" << widget_id << std::endl;
 
     const online_desk::board::WidgetInfo& update_info = request.update_data();
 
@@ -196,16 +198,9 @@ void SessionReactor::OnCancel() {
 }
 
 void SessionReactor::OnDone() {
-    uint64_t board_id = session_instance_->board_id_;
-    bool last_member = false;
     {
         std::lock_guard<std::mutex> lock(session_instance_->board_edit_mutex_);
-        session_instance_->session_members_.erase(this);
-        last_member = session_instance_->session_members_.empty();
-    }
-    if (last_member) {
-        manager_.CloseSession(board_id);
-        delete session_instance_;
+        session_instance_->CloseMemberConnection(this);
     }
     delete this;
 }
