@@ -86,7 +86,7 @@ void AuthDialog::setupUI() {
     connect(username_edit_, &QLineEdit::returnPressed, this, &AuthDialog::onLoginClicked);
     connect(password_edit_, &QLineEdit::returnPressed, this, &AuthDialog::onLoginClicked);
 
-    std::cout << "Login dialog set up" << std::endl;
+    // std::cout << "Login dialog set up" << std::endl;
 }
 
 void AuthDialog::onLoginClicked() {

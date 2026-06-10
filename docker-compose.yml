@@ -1,29 +1,57 @@
-version: '3.8'
-
 services:
+  db:
+    image: postgres:15-alpine
+    container_name: desk_db_compose
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: desk_admin
+      POSTGRES_PASSWORD: desk_admin
+      POSTGRES_DB: desk_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U desk_admin -d desk_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   server: 
     build: 
       context: .
       dockerfile: Dockerfile.server
-    container_name: server
-    command: ["./usr/local/bin/desk_server"]
+    container_name: desk_server_compose
+    command: ["/usr/local/bin/desk_server"]
     ports:
       - "50051:50051"
     environment:
       - SERVER_PORT=50051
       - DEBUG=${DEBUG:-false}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=desk_admin
+      - DB_PASSWORD=desk_admin
+      - DB_NAME=desk_db
     networks:
       - app-network
     restart: unless-stopped
-    
-    volumes:
-      - ./server/src:/app/src
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "ss", "-l", "-n", "|", "grep", "8080"]
-      interval: 10s
-      timeout: 5s
+      test: ["CMD", "grpcurl", "-plaintext", "localhost:50051", "list"]
+      interval: 30s
+      timeout: 10s
       retries: 3
+      start_period: 10s
 
 networks:
   app-network:
     driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local

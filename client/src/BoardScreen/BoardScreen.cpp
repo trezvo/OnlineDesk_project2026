@@ -123,7 +123,7 @@ void BoardScreen::SetupUI() {
     connect(worker_thread, &QThread::started, worker_, &BoardWorker::runWorking);
     connect(worker_, &BoardWorker::printUpdate, this, &BoardScreen::acceptBoardUpdate);
 
-    std::cout << this->thread() << ' ' << worker_->thread() <<  std::endl;
+    // std::cout << this->thread() << ' ' << worker_->thread() <<  std::endl;
 
     scene_view_->show();
     worker_thread->start();

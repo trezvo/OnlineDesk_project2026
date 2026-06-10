@@ -92,7 +92,7 @@ void BoardsButtonList::UpdateUI() {
         buttons_.append(new_button);
     }
 
-    std::cout << "fetched boards list of size: " << owned_boards.second.size() << std::endl;
+    // std::cout << "fetched boards list of size: " << owned_boards.second.size() << std::endl;
     layout_->addStretch();
     this->show();
 }

@@ -2,7 +2,6 @@
 #include "SessionManager.hpp"
 #include "SessionReactor.hpp"
 #include <vector>
-#include "WidgetsDataBase/WidgetsDB.hpp"
 #include <iostream>
 
 namespace board_module {

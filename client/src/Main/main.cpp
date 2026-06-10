@@ -18,7 +18,7 @@ int main(int argc, char *argv[]) {
     AppController controller(client);
     controller.run();
 
-    std::cout << "controller runs" << std::endl;
+    // std::cout << "controller runs" << std::endl;
 
     return app.exec();
 }

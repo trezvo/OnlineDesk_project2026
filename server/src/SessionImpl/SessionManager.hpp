@@ -7,7 +7,6 @@
 #include <vector>
 #include <unordered_map>
 #include "BoardImpl/BoardServiceImplFwd.hpp"
-#include "WidgetsDataBase/WidgetsDB.hpp"
 #include "Database/WidgetRepository.hpp"
 #include "Database/BoardRepository.hpp"
 #include "board.grpc.pb.h"

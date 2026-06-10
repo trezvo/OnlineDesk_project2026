@@ -29,7 +29,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 
-COPY *.deb /tmp/packages/
+COPY docker-odb-packages/*.deb /tmp/packages/
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -74,18 +74,26 @@ FROM ubuntu:22.04
 
 WORKDIR /app
 
+COPY docker-odb-packages/*.deb /tmp/packages/
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    gdebi-core \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    /tmp/packages/*.deb \
+    && rm -rf /var/lib/apt/lists/* /tmp/packages
+
 RUN apt-get update && apt-get install -y \
     libpq5 \
     libssl3 \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY --from=builder /build/server/desk_server /usr/local/bin/desk_server
-COPY --from=builder /usr/local/lib/libodb*.so* /usr/local/lib/
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libsodium.so* /usr/lib/x86_64-linux-gnu/
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libpq.so* /usr/lib/x86_64-linux-gnu/
+    libsodium-dev 
 
 RUN ldconfig
+
+COPY --from=builder /build/server/desk_server /usr/local/bin/desk_server
 
 EXPOSE 50051
 

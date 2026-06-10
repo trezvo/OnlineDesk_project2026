@@ -22,7 +22,7 @@ void runServer(const std::string &server_address) {
         "desk_admin",
         "desk_admin",
         "desk_db",
-        "localhost",
+        "db",
         5432
     };
 

@@ -37,7 +37,7 @@ BoardRepository::CODE_ID BoardRepository::remove(uint64_t board_id) {
             db.erase<Board>(board_id);
             return CODE_ID::OK;
         }
-        catch(const odb::object_not_persistent)
+        catch(const odb::object_not_persistent&)
         {
             return CODE_ID::BOARD_NOT_FOUND;
         }

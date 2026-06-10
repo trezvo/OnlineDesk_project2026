@@ -33,10 +33,7 @@ void EditableTextItem::keyPressEvent(QKeyEvent* event) {
 
 Widget::Widget(uint64_t widget_id, WidgetType type)
     : widget_id_(widget_id)
-    , type_(type)
-    , R_(std::rand() % 160 + 60)
-    , G_(std::rand() % 160 + 60)
-    , B_(std::rand() % 160 + 60) {
+    , type_(type) {
 
     setFlag(QGraphicsItem::ItemIsSelectable);
     setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
@@ -129,10 +126,7 @@ void Widget::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QW
         return;
     }
 
-    QColor fill(R_, G_, B_, 220);
-    if (type_ == WidgetType::TEXT) {
-        fill = QColor(255, 255, 255, 210);
-    }
+    QColor fill(255, 255, 255, 210);
     painter->setBrush(fill);
 
     QPen pen(Qt::black, 1.5);

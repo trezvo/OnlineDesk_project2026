@@ -49,7 +49,6 @@ protected:
 class Widget : public QGraphicsObject {
     Q_OBJECT
 
-    int R_, G_, B_;
     uint64_t widget_id_;
     bool unnotify_{false};
     WidgetType type_;
