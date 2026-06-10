@@ -211,30 +211,16 @@ grpc::Status BoardServiceImpl::CreateBoardSnapshot(
     uint64_t board_id = request->board_id();
     std::string user_id = request->user_id();
 
-    auto board_query = board_table_->findById(board_id);
-
-    if (std::holds_alternative<db::BoardRepository::CODE_ID>(board_query)) {
-        using code = db::BoardRepository::CODE_ID;
-        switch (std::get<code>(board_query)) {
-            case (code::BOARD_NOT_FOUND) : {
-                response->set_success(false);
-            } break;
+    switch (session_manager_.MakeBoardSnapshot(board_id, user_id)) {
+        case (0) : {
+            response->set_success(false);
+        } break;
+        default : {
+            response->set_success(true);
         }
-
-        return grpc::Status::OK;
     }
 
-    db::Board& board = std::get<db::Board>(board_query);
-    
-    response->set_success(true);
-
-    board.id() = 0;
-    board.name() = "shapshot of " + std::to_string(board_id);
-
-    board_table_->create(board, request->user_id());
-    session_manager_.MakeBoardSnapshot(board_id, board.id());
-
-    std::cout << "created snapshot of " << board_id << std::endl;
+    // std::cout << "created snapshot of " << board_id << std::endl;
 
     return grpc::Status::OK;
 }
@@ -242,7 +228,7 @@ grpc::Status BoardServiceImpl::CreateBoardSnapshot(
 grpc::ServerBidiReactor<contracts::BoardUpdate, contracts::BoardUpdate>
     *BoardServiceImpl::SubscribeBoard(grpc::CallbackServerContext *context
     ) {
-    std::cout << "emit for subscribe" << std::endl;
+    // std::cout << "emit for subscribe" << std::endl;
     return new SessionReactor(context, session_manager_);
 }
 

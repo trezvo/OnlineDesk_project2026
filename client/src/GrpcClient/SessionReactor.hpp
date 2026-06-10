@@ -15,21 +15,22 @@ using namespace online_desk::board;
 
 class SessionReactor : public SessionReactorInterface {
 
+    std::unique_ptr<grpc::ClientContext> context_;
+
     std::atomic<bool> is_running_;
     BoardWorkerInterface* board_worker_;
-    BoardUpdate read_buffer_;
-    BoardUpdate write_buffer_;
+    std::unique_ptr<BoardUpdate> read_buffer_ = std::make_unique<BoardUpdate>();
+    std::unique_ptr<BoardUpdate> write_buffer_ = nullptr;
     
     std::atomic<bool> is_writing_;
     std::mutex write_queue_mutex_;
-    std::queue<BoardUpdate> write_queue_;
+    std::queue<std::unique_ptr<BoardUpdate>> write_queue_;
 
     void ProcessQueue();
-    ~SessionReactor() override = default;
 
 public:
 
-    explicit SessionReactor(BoardService::Stub* stub_, std::unique_ptr<grpc::ClientContext> context, BoardWorkerInterface* worker); 
+    explicit SessionReactor(BoardService::Stub* stub, std::unique_ptr<grpc::ClientContext> context, BoardWorkerInterface* worker); 
     void DetachWorker();    
     void AddUpdate(BoardUpdate request) override;
     void OnWriteDone(bool ok) override;
@@ -37,5 +38,7 @@ public:
     void OnDone(const grpc::Status& status) override;
 
     void Shutdown() override;
-
+    ~SessionReactor() override {
+        Shutdown();
+    };
 };

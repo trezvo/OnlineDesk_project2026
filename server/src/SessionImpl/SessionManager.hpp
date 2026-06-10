@@ -34,7 +34,7 @@ public:
     :   widget_table_(widget_table), 
         board_table_(board_table) {}
 
-    uint64_t MakeBoardSnapshot(uint64_t old_board_id, uint64_t new_board_id);
+    uint64_t MakeBoardSnapshot(uint64_t old_board_id, const std::string& user_uuid);
     std::vector<db::Widget> GetBoardsWidgets(uint64_t board_id);
     db::Widget GetWidget(uint64_t widget_id);
     void AddWidget(db::Widget widget, uint64_t board_id);

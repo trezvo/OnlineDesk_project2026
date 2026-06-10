@@ -74,6 +74,19 @@ FROM ubuntu:22.04
 
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y \
+    libpq5 \
+    libssl3 \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder /build/server/desk_server /usr/local/bin/desk_server
+COPY --from=builder /usr/local/lib/libodb*.so* /usr/local/lib/
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libsodium.so* /usr/lib/x86_64-linux-gnu/
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libpq.so* /usr/lib/x86_64-linux-gnu/
+
+RUN ldconfig
 
 EXPOSE 50051
+
+CMD ["desk_server"]

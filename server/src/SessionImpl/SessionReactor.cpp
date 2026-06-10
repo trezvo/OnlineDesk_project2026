@@ -39,7 +39,7 @@ SessionReactor::SessionReactor(grpc::CallbackServerContext* context, SessionMana
 
     }
 
-    std::cout << "session reactor succesfuly init for board id=" << board_id << std::endl;
+    // std::cout << "session reactor succesfuly init for board id=" << board_id << std::endl;
     
     StartRead(&request_);
 }
@@ -49,6 +49,8 @@ void SessionReactor::Broadcast(const contracts::BoardUpdate &request) {
     std::lock_guard<std::mutex> lock(session_instance_->board_edit_mutex_);
 
     online_desk::board::ActionType action = request.action_type();
+
+    // std::cout << "content: " << request.update_data().content() << std::endl;
 
     switch (action) {
         case (online_desk::board::EXIT): {
@@ -66,6 +68,10 @@ void SessionReactor::Broadcast(const contracts::BoardUpdate &request) {
             session_instance_->widgets_storage_.insert(request.widget_id());
         } break;
         case (online_desk::board::UPDATE): {
+            if (!session_instance_->widgets_storage_.contains(request.widget_id())) {
+                return;
+            }
+
             manager_.UpdateWidget(db::Widget(
                 request.widget_id(),
                 request.update_data().coord_x(),
@@ -89,7 +95,7 @@ void SessionReactor::Broadcast(const contracts::BoardUpdate &request) {
 
     uint64_t widget_id = request.widget_id();
 
-    std::cout << "income update: id=" << widget_id << std::endl;
+    // std::cout << "income update: id=" << widget_id << std::endl;
 
     const online_desk::board::WidgetInfo& update_info = request.update_data();
 

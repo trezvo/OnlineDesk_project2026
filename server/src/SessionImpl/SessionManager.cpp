@@ -26,11 +26,16 @@ void SessionManager::CloseSession(uint64_t board_id) {
     }
 }
 
-uint64_t SessionManager::MakeBoardSnapshot(uint64_t old_board_id, uint64_t new_board_id) {
+uint64_t SessionManager::MakeBoardSnapshot(uint64_t old_board_id, const std::string& user_uuid) {
     try {
-        return widget_table_->createSnapshot(old_board_id, new_board_id);
+        return widget_table_->createSnapshot(old_board_id, user_uuid);
+    }
+    catch (const odb::exception& e) {
+        std::cout << "create snapshot: " << e.what() << std::endl;
+        return 0;
     }
     catch (...) {
+        std::cout << "create snapshot: board not found" << std::endl;
         return 0;
     }
 }

@@ -1,5 +1,6 @@
 #include "WidgetRepository.hpp"
 #include "Models-odb.hxx"
+#include <iostream>
 
 namespace db {
 
@@ -127,31 +128,61 @@ code_enum WidgetRepository::remove(uint64_t widget_id) {
     });
 }
 
-uint64_t WidgetRepository::createSnapshot(uint64_t old_board_id, uint64_t new_board_id) {
+uint64_t WidgetRepository::createSnapshot(uint64_t old_board_id, const std::string& user_uuid) {
     return transaction([&] (odb::transaction& t) -> uint64_t {
         auto& db = t.database();
 
         auto old_board = db.find<Board>(old_board_id);
-        auto new_board = db.find<Board>(new_board_id);
 
-        if (!old_board || !new_board) {
+        if (!old_board) {
             throw code_enum::BOARD_NOT_FOUND;
         }
 
-        for (Widget& widget : findAllOnBoard(old_board_id)) {
-            widget.id() = new_board_id;
-            widget.board() = std::shared_ptr<Board>(old_board);
-            switch (create(widget)) {
-                case (code_enum::OK) : {
-                    continue;
-                } break;
-                default : {
-                    throw code_enum::INTERNAL_ERROR;
-                } break;
+        auto user = db.find<User>(user_uuid);
+
+        if (!user) {
+            throw code_enum::USER_NOT_FOUND;
+        }
+
+        Board& new_board = *old_board;
+
+        new_board.id() = 0;
+        new_board.name() = "snapshot of " + std::to_string(old_board_id);
+        new_board.owner() = std::shared_ptr<User>(user);
+
+        try {
+            db.persist(new_board);
+        }
+        catch (const odb::exception&) {
+            throw code_enum::INTERNAL_ERROR;
+        }
+
+        auto widgets = [&]() -> std::vector<Widget> {
+            using query = odb::query<Widget>;
+            auto result = db.query<Widget>(query::board->id == old_board_id);
+
+            std::vector<Widget> out;
+            for (auto& widget : result) {
+                out.push_back(std::move(widget));
+            }
+            return out;
+        }();
+
+        auto old_board_shared = std::shared_ptr<Board>(old_board);
+
+        for (Widget& widget : widgets) {
+            widget.id() = gen64_();
+            widget.board() = old_board_shared;
+            try {
+                db.persist(widget);
+            }
+            catch (const odb::exception& e) {
+                std::cout << "error, while inserting widget" << std::endl;
+                throw;
             }
         }
 
-        return new_board_id;
+        return new_board.id();
     }); 
 }
 

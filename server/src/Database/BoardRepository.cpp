@@ -16,13 +16,6 @@ BoardRepository::CODE_ID BoardRepository::create(Board& board, const std::string
             return CODE_ID::USER_NOT_FOUND;
         }
 
-        auto existing_board = db.query_one<Board>(
-            odb::query<Board>::owner->uuid == owner && odb::query<Board>::name == board.name());
-
-        if (existing_board) {
-            return CODE_ID::BOARD_ALREADY_EXISTS;
-        } 
-
         board.owner(std::shared_ptr<User>(user));
 
         try {

@@ -6,9 +6,12 @@
 #include <memory>
 
 GrpcBoardClient::GrpcBoardClient(const std::string& server_address) {
-    auto channel = grpc::CreateChannel(server_address, grpc::InsecureChannelCredentials());
-    auth_stub_ = online_desk::auth::AuthenticationService::NewStub(channel);
-    board_stub_ = online_desk::board::BoardService::NewStub(channel);
+    channel_ = grpc::CreateChannel(
+        server_address,
+        grpc::InsecureChannelCredentials()
+    );
+    auth_stub_ = online_desk::auth::AuthenticationService::NewStub(channel_);
+    board_stub_ = online_desk::board::BoardService::NewStub(channel_);
 }
 
 void GrpcBoardClient::login(const std::string& username, const std::string& password) {
@@ -42,19 +45,19 @@ RegisterResult GrpcBoardClient::registerUser(const std::string& username, const 
 
     context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(10));
 
-    std::cout << "here1" << std::endl;
+    // std::cout << "here1" << std::endl;
     grpc::Status status = auth_stub_->UserRegister(&context, request, &response);
-    std::cout << "here2" << std::endl;
+    // std::cout << "here2" << std::endl;
     
 
     if (status.ok() && response.register_succeed()) {
         return {true, response.message()};
     } 
     else if (status.error_code() == grpc::StatusCode::UNAVAILABLE) {
-        std::cout << "unavailable" << std::endl;
+        // std::cout << "unavailable" << std::endl;
     }
     else if (status.error_code() == grpc::StatusCode::DEADLINE_EXCEEDED) {
-        std::cout << "deadline exceeded" << std::endl;
+        // std::cout << "deadline exceeded" << std::endl;
     }
     return {false, status.ok() ? response.message() : status.error_message()};
 }
@@ -73,7 +76,7 @@ std::pair<bool, std::vector<BoardInfoInternal>> GrpcBoardClient::fetchUserBoards
     }
 
     std::vector<BoardInfoInternal> boards_vec;
-    std::cout << "income boards list size: " << response.boards_size() << std::endl;
+    // std::cout << "income boards list size: " << response.boards_size() << std::endl;
 
     for (int i = 0; i < response.boards_size(); i++) {
         const auto& board_info = response.boards(i);

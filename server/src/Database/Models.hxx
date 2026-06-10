@@ -81,7 +81,7 @@ namespace db {
             int y, 
             const std::string& content,
             std::shared_ptr<Board> board) : 
-        id_(id), x_coord_(x), y_coord_(y), board_(board) {}
+        id_(id), x_coord_(x), y_coord_(y), content_(content), board_(board) {}
 
         explicit Widget(unsigned long long id) : id_(id) {}
         explicit Widget(const std::string& content) : content_(content) {}
@@ -109,7 +109,7 @@ namespace db {
         private:
             friend class odb::access;
 
-            #pragma db id auto
+            #pragma db id
             unsigned long long id_;
 
             #pragma db not_null
