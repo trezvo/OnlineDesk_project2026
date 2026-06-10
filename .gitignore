@@ -17,6 +17,7 @@ CMakeLists.txt.user*
 .vscode/
 .idea/
 
+*.log
 *.o
 *.so
 *.dylib
